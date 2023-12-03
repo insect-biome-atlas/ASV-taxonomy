@@ -1,0 +1,127 @@
+import os
+
+configfile: "config/config.yml"
+
+rule all:
+    input:
+        expand("results/{ref}/metabuli/classify/{query}_{f}.tsv", 
+            ref=config["metabuli"]["ref"].keys(), 
+            query=config["metabuli"]["query"].keys(),
+            f=["classifications","report"])
+
+rule sintax_fasta_to_gtdbfmt:
+    output:
+        tax="results/{ref}/gtdbfmt/taxonomy.tsv",
+        seqs="results/{ref}/gtdbfmt/seqs.fasta",
+        tbl="results/{ref}/gtdbfmt/taxonomy.tbl",
+    input:
+        lambda wildcards: config["metabuli"]["ref"][wildcards.ref],
+    log:
+        "results/{ref}/gtdbfmt/sintax_fasta_to_gtdbfmt.log"
+    params:
+        src=srcdir("scripts/coidb_to_gtdbfmt.py"),
+        outdir=lambda wildcards, output: os.path.dirname(output[0]),
+    shell:
+        """
+        python {params.src} {input} {params.outdir} > {log} 2>&1
+        echo -e "accession" > {output.tbl}
+        cut -f1 {output.tax} >> {output.tbl}
+        """
+
+rule gtdb_to_taxdump:
+    output:
+        dump=expand("results/{{ref}}/metabuli/db/taxonomy/{f}.dmp", f = ["delnodes","merged","names","nodes"]),
+        tsv="results/{ref}/metabuli/db/taxonomy.tsv",
+        tbl_wtaxids="results/{ref}/gtdbfmt/taxonomy_wTaxIDs.tsv",
+        mapfile="results/{ref}/metabuli/db/map.tsv",
+    input:
+        tax=rules.sintax_fasta_to_gtdbfmt.output.tax,
+        tbl=rules.sintax_fasta_to_gtdbfmt.output.tbl,
+    log:
+        "results/{ref}/metabuli/gtdb_to_taxdump.log"
+    params:
+        outdir=lambda wildcards, output: os.path.dirname(output.dump[0]),
+    conda:
+        "envs/metabuli.yml"
+    shell:
+        """
+        gtdb_to_taxdump.py -t {input.tbl} -o {params.outdir} {input.tax} >{output.tsv} 2>{log}
+        cut -f1,2 {output.tbl_wtaxids} > {output.mapfile}
+        echo -e "\t|\t\t|" > {params.outdir}/merged.dmp
+        """
+
+rule refmt_accession2taxid:
+    output:
+        a2id="results/{ref}/metabuli/db/accession2taxid.tsv"
+    input:
+        mapfile=rules.gtdb_to_taxdump.output.mapfile
+    run:
+        with open(input.mapfile, 'r') as fhin, open(output.a2id, 'w') as fhout:
+            for i, line in enumerate(fhin):
+                if i ==0:
+                    fhout.write("accession\taccession.version\ttaxid\tgi\n")
+                    continue
+                seqid, taxid = line.rstrip().split("\t")
+                fhout.write(f"{seqid[0:-2]}\t{seqid}\t{taxid}\t0\n")       
+
+rule metabuli_add_to_library:
+    output:
+        flag=touch("results/{ref}/metabuli/db/add.flag"),
+    input:
+        a2id=rules.refmt_accession2taxid.output.a2id,
+        seqs=rules.sintax_fasta_to_gtdbfmt.output.seqs,
+        dump=expand("results/{{ref}}/metabuli/db/taxonomy/{f}.dmp", f = ["delnodes","merged","names","nodes"]),
+    log:
+        "results/{ref}/metabuli/db/add_to_library.log"
+    params:
+        seq_abs = lambda wildcards, input: os.path.abspath(input.seqs),
+        dbdir= lambda wildcards, input: os.path.dirname(input.a2id),
+        list="results/{ref}/metabuli/db/list",
+    #shadow: "minimal"
+    conda: "envs/metabuli.yml"
+    shell:
+        """
+        echo {params.seq_abs} > {params.list}
+        metabuli add-to-library {params.list} {input.a2id} {params.dbdir} > {log} 2>&1
+        rm {params.list}
+        """
+
+rule metabuli_build:
+    output:
+        expand("results/{{ref}}/metabuli/db/{f}", f=["diffIdx","taxID_list","acc2taxid.map","split"]),
+    input:
+        flag=rules.metabuli_add_to_library.output.flag,
+        a2id=rules.refmt_accession2taxid.output.a2id,
+    log:
+        "results/{ref}/metabuli/db/build.log"
+    conda: "envs/metabuli.yml"
+    params:
+        lib_files="results/{ref}/metabuli/db/library-files.txt",
+        dbdir=lambda wildcards, input: os.path.dirname(input.flag),
+    threads: 20
+    shell:
+        """
+        find {params.dbdir}/library -type f -name '*.fna' > {params.lib_files}
+        metabuli build {params.dbdir} {params.lib_files} {input.a2id} --threads {threads} >{log} 2>&1
+        """
+
+rule metabuli_classify:
+    output:
+        "results/{ref}/metabuli/classify/{query}_classifications.tsv",
+        "results/{ref}/metabuli/classify/{query}_report.tsv",
+    input:
+        db=rules.metabuli_build.output,
+        fa=lambda wildcards: config["metabuli"]["query"][wildcards.query],
+    log:
+        "results/{ref}/metabuli/classify/{query}.log"
+    params:
+        dbdir=lambda wildcards, input: os.path.dirname(input.db[0]),
+        outdir=lambda wildcards, output: os.path.dirname(output[0]),
+        jobid=lambda wildcards: wildcards.query,
+        options=config["metabuli"]["options"]
+    conda: "envs/metabuli.yml"
+    threads: 20
+    shell:
+        """
+        metabuli classify {input.fa} {params.dbdir} {params.outdir} {params.jobid} --seq-mode 1 --threads {threads} {params.options} >{log} 2>&1
+        """

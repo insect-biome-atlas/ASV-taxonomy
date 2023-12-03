@@ -1,0 +1,11 @@
+name: metabuli
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3
+  - metabuli
+  - pip
+  - pip:
+    - gtdb_to_taxdump

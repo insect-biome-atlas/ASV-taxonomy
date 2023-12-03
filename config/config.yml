@@ -1,0 +1,28 @@
+metabuli:
+  ref:
+    coi: "data/coi.subsample.fasta"
+  query: 
+    coi_query: "data/coi.subsample.fasta"
+  options: "--min-score 0.15 --min-sp-score 0.5"
+epa-ng:
+  # Set input options
+  input:
+    lep_backbone:
+      reference_tree: "data/backbone.nex"
+      reference_tree_format: "nexus"
+      reference_msa: "data/lep_backbone_aln.nex"
+      reference_msa_format: "nexus"
+      query: "data/lep.fasta"
+      tree_ranks: ["order","family","genus","species"]
+      ref_taxonomy: ""
+  model: "GTR+F+I+I+R10"
+  gappa:
+    # Ratio by which LWR is split between annotations if an edge has two possible
+    # annotations. Specifies the amount going to the proximal annotation. If not
+    # set program will determine the ratio automatically from the 'distal length'
+    # specified per placement.
+    distribution-ratio: -1
+    # For assignment of taxonomic labels to the reference tree, require this
+    # consensus threshold. Example: if set to 0.6, and 60% of an inner node's
+    # descendants share a taxonomic path, set that path at the inner node.
+    consensus-thresh: 1
