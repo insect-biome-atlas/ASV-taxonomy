@@ -30,9 +30,13 @@ def fmt_taxstring(tax):
     Output:
     'd__Arthropoda;p__Insecta;c__Lepidoptera;o__Gracillariidae;f__Conopomorpha;g__Conopomorpha cramerella;s__BOLD:AAA4000'
     """
-    tax = tax.split("=")[1]
-    refmt = p.sub(r'\1__', tax).replace(",",";")
-    return refmt
+    rename = {"d__":"d__", "k__":"p__", "p__":"c__", "c__":"o__", "o__":"f__", "f__":"g__", "g__":"s__"}
+    tax = tax.split("=")[1].replace("s:", "")
+    bold_id = tax.split(",")[-1]
+    refmt = p.sub(r'\1__', ",".join(tax.split(",")[0:-1])).replace(",",";")
+    for key in reversed(rename.keys()):
+        refmt = refmt.replace(key, rename[key])
+    return bold_id, refmt
 
 
 def fmt_seqs(f, outdir):
@@ -57,14 +61,10 @@ def fmt_seqs(f, outdir):
         for record in SeqIO.parse(f, "fasta"):
             seq_id, tax = (record.description).split(";")
             tax_items = tax.split(",")
-            # if second item is kingdom, remove first item and set second to domain
-            if tax_items[1].startswith("k:"):
-                tax = ",".join(tax.split(",")[1:])
-                tax = "tax=d"+tax
             refmt_seqid = f"{seq_id}.1"
-            refmt_tax = fmt_taxstring(tax)
-            fh_tax.write(f"{refmt_seqid}\t{refmt_tax}\n")
-            fh_fasta.write(f">{refmt_seqid}\n{record.seq}\n")
+            bold_id, refmt_tax = fmt_taxstring(tax)
+            fh_tax.write(f"{bold_id}.1\t{refmt_tax}\n")
+            fh_fasta.write(f">{bold_id}.1\n{record.seq}\n")
 
 
 def main(args):
