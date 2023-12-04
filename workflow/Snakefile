@@ -27,7 +27,7 @@ rule sintax_fasta_to_gtdbfmt:
         "results/metabuli/{ref}/gtdbfmt/sintax_fasta_to_gtdbfmt.log"
     params:
         src=srcdir("scripts/coidb_to_gtdbfmt.py"),
-        outdir=lambda wildcards, output: os.path.dirname(output[0]),
+        outdir=lambda wildcards, output: os.path.dirname(output.tax),
     shell:
         """
         python {params.src} {input} {params.outdir} > {log} 2>&1
@@ -38,9 +38,9 @@ rule sintax_fasta_to_gtdbfmt:
 rule gtdb_to_taxdump:
     output:
         dump=expand("results/metabuli/{{ref}}/db/taxonomy/{f}.dmp", f = ["delnodes","merged","names","nodes"]),
-        tsv="results/metabuli/{ref}/db/taxonomy.tsv",
+        tsv="results/metabuli/{ref}/gtdbfmt/taxonomy.taxdump.tsv",
         tbl_wtaxids="results/metabuli/{ref}/gtdbfmt/taxonomy_wTaxIDs.tsv",
-        mapfile="results/metabuli/{ref}/db/map.tsv",
+        mapfile="results/metabuli/{ref}/gtdbfmt/map.tsv",
     input:
         tax=rules.sintax_fasta_to_gtdbfmt.output.tax,
         tbl=rules.sintax_fasta_to_gtdbfmt.output.tbl,
@@ -59,7 +59,7 @@ rule gtdb_to_taxdump:
 
 rule refmt_accession2taxid:
     output:
-        a2id="results/metabuli/{ref}/db/accession2taxid.tsv"
+        a2id="results/metabuli/{ref}/gtdbfmt/accession2taxid.tsv"
     input:
         mapfile=rules.gtdb_to_taxdump.output.mapfile
     run:
@@ -71,51 +71,38 @@ rule refmt_accession2taxid:
                 seqid, taxid = line.rstrip().split("\t")
                 fhout.write(f"{seqid[0:-2]}\t{seqid}\t{taxid}\t0\n")       
 
-rule metabuli_add_to_library:
+rule metabuli_add_and_build:
     output:
-        flag=touch("results/metabuli/{ref}/db/add.flag"),
+        expand("results/metabuli/{{ref}}/db/{f}", f=["taxID_list","acc2taxid.map"]),
     input:
         a2id=rules.refmt_accession2taxid.output.a2id,
         seqs=rules.sintax_fasta_to_gtdbfmt.output.seqs,
         dump=expand("results/metabuli/{{ref}}/db/taxonomy/{f}.dmp", f = ["delnodes","merged","names","nodes"]),
     log:
-        "results/metabuli/{ref}/db/add_to_library.log"
+        add="results/metabuli/{ref}/db/add.log",
+        build="results/metabuli/{ref}/db/build.log",
+    conda: "envs/metabuli.yml"
     params:
         seq_abs = lambda wildcards, input: os.path.abspath(input.seqs),
-        dbdir= lambda wildcards, input: os.path.dirname(input.a2id),
-        list="results/metabuli/{ref}/db/list",
-    conda: "envs/metabuli.yml"
-    threads: 1
-    resources:
-        runtime = 60 * 10
-    shell:
-        """
-        echo {params.seq_abs} > {params.list}
-        metabuli add-to-library {params.list} {input.a2id} {params.dbdir} > {log} 2>&1
-        rm {params.list}
-        """
-
-rule metabuli_build:
-    output:
-        expand("results/metabuli/{{ref}}/db/{f}", f=["diffIdx","taxID_list","acc2taxid.map","split"]),
-    input:
-        flag=rules.metabuli_add_to_library.output.flag,
-        a2id=rules.refmt_accession2taxid.output.a2id,
-    log:
-        "results/metabuli/{ref}/db/build.log"
-    conda: "envs/metabuli.yml"
-    params:
-        lib_files="results/metabuli/{ref}/db/library-files.txt",
-        dbdir=lambda wildcards, input: os.path.dirname(input.flag),
+        dbdir="results/metabuli/{ref}/db",
+        local_dbdir="$TMPDIR/metabuli/{ref}/db",
     threads: 20
     resources:
         runtime = 60 * 24 * 5,
-        constraint = "-C mem256GB",
-        mem_mb = "256000"
+        constraint = "mem1TB",
     shell:
         """
-        find {params.dbdir}/library -type f -name '*.fna' > {params.lib_files}
-        metabuli build {params.dbdir} {params.lib_files} {input.a2id} --threads {threads} >{log} 2>&1
+        mkdir -p {params.local_dbdir}
+        cp -r {params.dbdir}/* {params.local_dbdir}/
+        echo {params.seq_abs} > {params.local_dbdir}/list
+        metabuli add-to-library {params.local_dbdir}/list {input.a2id} {params.local_dbdir} > {log.add} 2>&1
+
+        find {params.local_dbdir}/library -type f -name '*.fna' > {params.local_dbdir}/library-files.txt
+        metabuli build {params.local_dbdir} {params.local_dbdir}/library-files.txt {input.a2id} --threads {threads} >{log.build} 2>&1
+        rm -rf {params.local_dbdir}/library
+        rm -rf {params.local_dbdir}/taxonomy
+        cp {params.local_dbdir}/* {params.dbdir}/
+        rm -rf {params.local_dbdir}
         """
 
 rule metabuli_classify:
@@ -123,7 +110,7 @@ rule metabuli_classify:
         "results/metabuli/{ref}/classify/{run}/{query}_classifications.tsv",
         "results/metabuli/{ref}/classify/{run}/{query}_report.tsv",
     input:
-        db=rules.metabuli_build.output,
+        db=rules.metabuli_add_and_build.output,
         fa=lambda wildcards: config["metabuli"]["query"][wildcards.query],
     log:
         "results/metabuli/{ref}/classify/{run}/{query}.log"
