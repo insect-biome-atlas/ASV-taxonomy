@@ -109,7 +109,9 @@ rule metabuli_build:
         dbdir=lambda wildcards, input: os.path.dirname(input.flag),
     threads: 20
     resources:
-        runtime = 60 * 24 * 5
+        runtime = 60 * 24 * 5,
+        constraint = "-C mem256GB",
+        mem_mb = "256000"
     shell:
         """
         find {params.dbdir}/library -type f -name '*.fna' > {params.lib_files}
@@ -133,7 +135,7 @@ rule metabuli_classify:
     conda: "envs/metabuli.yml"
     threads: 20
     resources:
-        runtime = 60 * 24 * 10,        
+        runtime = 60 * 24 * 10,
     shell:
         """
         metabuli classify {input.fa} {params.dbdir} {params.outdir} {params.jobid} --seq-mode 1 --threads {threads} {params.options} >{log} 2>&1
