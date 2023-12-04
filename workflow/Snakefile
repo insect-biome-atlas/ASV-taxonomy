@@ -2,6 +2,12 @@ import os
 
 configfile: "config/config.yml"
 
+localrules:
+    sintax_fasta_to_gtdbfmt,
+    gtdb_to_taxdump,
+    refmt_accession2taxid,
+
+
 rule all:
     input:
         expand("results/metabuli/{ref}/classify/{run}/{query}_{f}.tsv", 
@@ -78,8 +84,10 @@ rule metabuli_add_to_library:
         seq_abs = lambda wildcards, input: os.path.abspath(input.seqs),
         dbdir= lambda wildcards, input: os.path.dirname(input.a2id),
         list="results/metabuli/{ref}/db/list",
-    #shadow: "minimal"
     conda: "envs/metabuli.yml"
+    threads: 1
+    resources:
+        runtime = 60 * 10
     shell:
         """
         echo {params.seq_abs} > {params.list}
@@ -100,6 +108,8 @@ rule metabuli_build:
         lib_files="results/metabuli/{ref}/db/library-files.txt",
         dbdir=lambda wildcards, input: os.path.dirname(input.flag),
     threads: 20
+    resources:
+        runtime = 60 * 24 * 5
     shell:
         """
         find {params.dbdir}/library -type f -name '*.fna' > {params.lib_files}
@@ -122,6 +132,8 @@ rule metabuli_classify:
         options=lambda wildcards: config["metabuli"]["runs"][wildcards.run]["options"]
     conda: "envs/metabuli.yml"
     threads: 20
+    resources:
+        runtime = 60 * 24 * 10,        
     shell:
         """
         metabuli classify {input.fa} {params.dbdir} {params.outdir} {params.jobid} --seq-mode 1 --threads {threads} {params.options} >{log} 2>&1

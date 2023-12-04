@@ -1,0 +1,12 @@
+use-conda: true
+reason: true
+keep-going: true
+printshellcmds: True
+rerun-triggers: mtime
+local-cores: 1
+jobs: 100
+configfile: config/config.yml
+slurm: True
+default-resources: "slurm_account=snicXXX-X-XXX"
+cluster-cancel: scancel
+latency-wait: 5
