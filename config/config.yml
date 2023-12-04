@@ -3,7 +3,19 @@ metabuli:
     coi: "data/coi.subsample.fasta"
   query: 
     coi_query: "data/coi.subsample.fasta"
-  options: "--min-score 0.15 --min-sp-score 0.5"
+  runs:
+    default:
+      options: ""
+    illumina:
+      options: "--min-score 0.15 --min-sp-score 0.5"
+    pacbio_hifi: 
+      options: "--min-score 0.07 --min-sp-score 0.3"
+    pacbio_sequel:
+      options: "--min-score 0.005"
+    ont:
+      options: "--min-score 0.008"
+
+    
 epa-ng:
   # Set input options
   input:

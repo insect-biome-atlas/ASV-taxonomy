@@ -4,8 +4,9 @@ configfile: "config/config.yml"
 
 rule all:
     input:
-        expand("results/{ref}/metabuli/classify/{query}_{f}.tsv", 
+        expand("results/{ref}/metabuli/classify/{run}/{query}_{f}.tsv", 
             ref=config["metabuli"]["ref"].keys(), 
+            run=config["metabuli"]["runs"].keys(),
             query=config["metabuli"]["query"].keys(),
             f=["classifications","report"])
 
@@ -107,18 +108,18 @@ rule metabuli_build:
 
 rule metabuli_classify:
     output:
-        "results/{ref}/metabuli/classify/{query}_classifications.tsv",
-        "results/{ref}/metabuli/classify/{query}_report.tsv",
+        "results/{ref}/metabuli/classify/{run}/{query}_classifications.tsv",
+        "results/{ref}/metabuli/classify/{run}/{query}_report.tsv",
     input:
         db=rules.metabuli_build.output,
         fa=lambda wildcards: config["metabuli"]["query"][wildcards.query],
     log:
-        "results/{ref}/metabuli/classify/{query}.log"
+        "results/{ref}/metabuli/classify/{run}/{query}.log"
     params:
         dbdir=lambda wildcards, input: os.path.dirname(input.db[0]),
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
         jobid=lambda wildcards: wildcards.query,
-        options=config["metabuli"]["options"]
+        options=lambda wildcards: config["metabuli"]["runs"][wildcards.run]["options"]
     conda: "envs/metabuli.yml"
     threads: 20
     shell:
