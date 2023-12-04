@@ -1,0 +1,6 @@
+use-conda: true
+reason: true
+keep-going: true
+rerun-triggers: mtime
+cores: 1
+configfile: config/config.yml
