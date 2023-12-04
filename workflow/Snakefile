@@ -4,7 +4,7 @@ configfile: "config/config.yml"
 
 rule all:
     input:
-        expand("results/{ref}/metabuli/classify/{run}/{query}_{f}.tsv", 
+        expand("results/metabuli/{ref}/classify/{run}/{query}_{f}.tsv", 
             ref=config["metabuli"]["ref"].keys(), 
             run=config["metabuli"]["runs"].keys(),
             query=config["metabuli"]["query"].keys(),
@@ -12,13 +12,13 @@ rule all:
 
 rule sintax_fasta_to_gtdbfmt:
     output:
-        tax="results/{ref}/gtdbfmt/taxonomy.tsv",
-        seqs="results/{ref}/gtdbfmt/seqs.fasta",
-        tbl="results/{ref}/gtdbfmt/taxonomy.tbl",
+        tax="results/metabuli/{ref}/gtdbfmt/taxonomy.tsv",
+        seqs="results/metabuli/{ref}/gtdbfmt/seqs.fasta",
+        tbl="results/metabuli/{ref}/gtdbfmt/taxonomy.tbl",
     input:
         lambda wildcards: config["metabuli"]["ref"][wildcards.ref],
     log:
-        "results/{ref}/gtdbfmt/sintax_fasta_to_gtdbfmt.log"
+        "results/metabuli/{ref}/gtdbfmt/sintax_fasta_to_gtdbfmt.log"
     params:
         src=srcdir("scripts/coidb_to_gtdbfmt.py"),
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
@@ -31,15 +31,15 @@ rule sintax_fasta_to_gtdbfmt:
 
 rule gtdb_to_taxdump:
     output:
-        dump=expand("results/{{ref}}/metabuli/db/taxonomy/{f}.dmp", f = ["delnodes","merged","names","nodes"]),
-        tsv="results/{ref}/metabuli/db/taxonomy.tsv",
-        tbl_wtaxids="results/{ref}/gtdbfmt/taxonomy_wTaxIDs.tsv",
-        mapfile="results/{ref}/metabuli/db/map.tsv",
+        dump=expand("results/metabuli/{{ref}}/db/taxonomy/{f}.dmp", f = ["delnodes","merged","names","nodes"]),
+        tsv="results/metabuli/{ref}/db/taxonomy.tsv",
+        tbl_wtaxids="results/metabuli/{ref}/gtdbfmt/taxonomy_wTaxIDs.tsv",
+        mapfile="results/metabuli/{ref}/db/map.tsv",
     input:
         tax=rules.sintax_fasta_to_gtdbfmt.output.tax,
         tbl=rules.sintax_fasta_to_gtdbfmt.output.tbl,
     log:
-        "results/{ref}/metabuli/gtdb_to_taxdump.log"
+        "results/metabuli/{ref}/gtdbfmt/gtdb_to_taxdump.log"
     params:
         outdir=lambda wildcards, output: os.path.dirname(output.dump[0]),
     conda:
@@ -53,7 +53,7 @@ rule gtdb_to_taxdump:
 
 rule refmt_accession2taxid:
     output:
-        a2id="results/{ref}/metabuli/db/accession2taxid.tsv"
+        a2id="results/metabuli/{ref}/db/accession2taxid.tsv"
     input:
         mapfile=rules.gtdb_to_taxdump.output.mapfile
     run:
@@ -67,17 +67,17 @@ rule refmt_accession2taxid:
 
 rule metabuli_add_to_library:
     output:
-        flag=touch("results/{ref}/metabuli/db/add.flag"),
+        flag=touch("results/metabuli/{ref}/db/add.flag"),
     input:
         a2id=rules.refmt_accession2taxid.output.a2id,
         seqs=rules.sintax_fasta_to_gtdbfmt.output.seqs,
-        dump=expand("results/{{ref}}/metabuli/db/taxonomy/{f}.dmp", f = ["delnodes","merged","names","nodes"]),
+        dump=expand("results/metabuli/{{ref}}/db/taxonomy/{f}.dmp", f = ["delnodes","merged","names","nodes"]),
     log:
-        "results/{ref}/metabuli/db/add_to_library.log"
+        "results/metabuli/{ref}/db/add_to_library.log"
     params:
         seq_abs = lambda wildcards, input: os.path.abspath(input.seqs),
         dbdir= lambda wildcards, input: os.path.dirname(input.a2id),
-        list="results/{ref}/metabuli/db/list",
+        list="results/metabuli/{ref}/db/list",
     #shadow: "minimal"
     conda: "envs/metabuli.yml"
     shell:
@@ -89,15 +89,15 @@ rule metabuli_add_to_library:
 
 rule metabuli_build:
     output:
-        expand("results/{{ref}}/metabuli/db/{f}", f=["diffIdx","taxID_list","acc2taxid.map","split"]),
+        expand("results/metabuli/{{ref}}/db/{f}", f=["diffIdx","taxID_list","acc2taxid.map","split"]),
     input:
         flag=rules.metabuli_add_to_library.output.flag,
         a2id=rules.refmt_accession2taxid.output.a2id,
     log:
-        "results/{ref}/metabuli/db/build.log"
+        "results/metabuli/{ref}/db/build.log"
     conda: "envs/metabuli.yml"
     params:
-        lib_files="results/{ref}/metabuli/db/library-files.txt",
+        lib_files="results/metabuli/{ref}/db/library-files.txt",
         dbdir=lambda wildcards, input: os.path.dirname(input.flag),
     threads: 20
     shell:
@@ -108,13 +108,13 @@ rule metabuli_build:
 
 rule metabuli_classify:
     output:
-        "results/{ref}/metabuli/classify/{run}/{query}_classifications.tsv",
-        "results/{ref}/metabuli/classify/{run}/{query}_report.tsv",
+        "results/metabuli/{ref}/classify/{run}/{query}_classifications.tsv",
+        "results/metabuli/{ref}/classify/{run}/{query}_report.tsv",
     input:
         db=rules.metabuli_build.output,
         fa=lambda wildcards: config["metabuli"]["query"][wildcards.query],
     log:
-        "results/{ref}/metabuli/classify/{run}/{query}.log"
+        "results/metabuli/{ref}/classify/{run}/{query}.log"
     params:
         dbdir=lambda wildcards, input: os.path.dirname(input.db[0]),
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
