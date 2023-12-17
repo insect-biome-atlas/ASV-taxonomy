@@ -11,7 +11,7 @@ rule run_epa_ng:
     input:
         expand("results/epa-ng/{ref}/queries/{query}/{f}",
             ref = config["epa-ng"]["ref"].keys(), query = config["epa-ng"]["query"].keys(),
-            f = "software.txt", "config.yml")
+            f = ["software.txt", "config.yml"]),
         expand("results/epa-ng/{ref}/queries/{query}.taxonomy.tsv",
             ref = config["epa-ng"]["ref"].keys(), query = config["epa-ng"]["query"].keys())
 
@@ -47,7 +47,7 @@ rule extract_ref_taxonomy:
     log:
         "logs/epa-ng/{ref}/extract_ref_taxonomy.log",
     params:
-        ranks=lambda wildcards: config["epa-ng]"]["ref"][wildcards.ref]["tree_ranks"],
+        ranks=lambda wildcards: config["epa-ng"]["ref"][wildcards.ref]["tree_ranks"],
         src=srcdir("../scripts/extract_ref_taxonomy.py")
     shell:
         """
@@ -143,7 +143,7 @@ rule raxml_evaluate:
     log:
         "logs/epa-ng/{ref}/raxml-ng.{query}.log",
     params:
-        model=config["epa-ng"]["ref"]["model"],
+        model=lambda wildcards: config["epa-ng"]["ref"][wildcards.ref]["model"],
         prefix=lambda wildcards, output: os.path.dirname(output[0]) + "/info",
     threads: 4
     resources:
@@ -176,14 +176,14 @@ rule epa_ng:
 
 
 def ref_taxonomy(wildcards):
-    if config["epa-ng"]["ref"][wildcards.ref]["taxonomy"]:
-        return config["epa-ng"]["ref"][wildcards.ref]["taxonomy"]
+    if config["epa-ng"]["ref"][wildcards.ref]["ref_taxonomy"]:
+        return config["epa-ng"]["ref"][wildcards.ref]["ref_taxonomy"]
     else:
         return rules.extract_ref_taxonomy.output
 
 
 def get_dist_ratio(config):
-    if config["gappa"]["distribution_ratio"] == -1:
+    if config["epa-ng"]["gappa"]["distribution-ratio"] == -1:
         return ""
     else:
         return f"--distribution-ratio {config['gappa']['distribution_ratio']}"
@@ -197,9 +197,9 @@ rule gappa_assign:
     log:
         "logs/epa-ng/{ref}/gappa_assign.{query}.log",
     params:
-        ranks_string="|".join(config["epa-ng"]["ref"][wildcards.ref]["tree_ranks"]),
+        ranks_string=lambda wildcards: "|".join(config["epa-ng"]["ref"][wildcards.ref]["tree_ranks"]),
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
-        consensus_thresh=config["epa-ng"]["gappa"]["consensus_thresh"],
+        consensus_thresh=config["epa-ng"]["gappa"]["consensus-thresh"],
         distribution_ratio=get_dist_ratio(config),
     threads: 4
     resources:
@@ -222,7 +222,7 @@ rule gappa2taxdf:
     log:
         "logs/epa-ng/{ref}/gappa2taxdf.{query}.log"
     params:
-        ranks=config["input"]["tree_ranks"],
+        ranks=lambda wildcards: config["epa-ng"]["ref"][wildcards.ref]["tree_ranks"],
         src=srcdir("../scripts/gappa2taxdf.py"),
     shell:
         """
