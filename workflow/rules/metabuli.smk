@@ -3,6 +3,12 @@ localrules:
     gtdb_to_taxdump,
     refmt_accession2taxid,
 
+rule run_metabuli:
+    input:
+        expand("results/metabuli/{ref}/queries/{query}/{run}/{query}_{n}.tsv",
+            ref = config["metabuli"]["ref"].keys(), query = config["metabuli"]["query"].keys(),
+            run = config["metabuli"]["runs"].keys(), n = ["classifications", "report"])
+
 rule sintax_fasta_to_gtdbfmt:
     output:
         tax="results/metabuli/{ref}/gtdbfmt/taxonomy.tsv",
@@ -36,7 +42,7 @@ rule gtdb_to_taxdump:
     params:
         outdir=lambda wildcards, output: os.path.dirname(output.dump[0]),
     conda:
-        "envs/metabuli.yml"
+        "../envs/metabuli.yml"
     shell:
         """
         gtdb_to_taxdump.py -t {input.tbl} -o {params.outdir} {input.tax} >{output.tsv} 2>{log}
@@ -68,7 +74,7 @@ rule metabuli_add_and_build:
     log:
         add="results/metabuli/{ref}/db/add.log",
         build="results/metabuli/{ref}/db/build.log",
-    conda: "envs/metabuli.yml"
+    conda: "../envs/metabuli.yml"
     params:
         seq_abs = lambda wildcards, input: os.path.abspath(input.seqs),
         dbdir="results/metabuli/{ref}/db",
@@ -94,19 +100,19 @@ rule metabuli_add_and_build:
 
 rule metabuli_classify:
     output:
-        "results/metabuli/{ref}/classify/{run}/{query}_classifications.tsv",
-        "results/metabuli/{ref}/classify/{run}/{query}_report.tsv",
+        "results/metabuli/{ref}/queries/{query}/{run}/{query}_classifications.tsv",
+        "results/metabuli/{ref}/queries/{query}/{run}/{query}_report.tsv",
     input:
         db=rules.metabuli_add_and_build.output,
         fa=lambda wildcards: config["metabuli"]["query"][wildcards.query],
     log:
-        "results/metabuli/{ref}/classify/{run}/{query}.log"
+        "results/metabuli/{ref}/metabuli_classify/{run}/{query}.log"
     params:
         dbdir=lambda wildcards, input: os.path.dirname(input.db[0]),
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
         jobid=lambda wildcards: wildcards.query,
         options=lambda wildcards: config["metabuli"]["runs"][wildcards.run]["options"]
-    conda: "envs/metabuli.yml"
+    conda: "../envs/metabuli.yml"
     threads: 20
     resources:
         runtime = 60 * 2,
