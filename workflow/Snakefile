@@ -4,6 +4,9 @@ import os
 def mem_allowed(wildcards, threads):
     return max(threads * 6400, 6400)
 
+from snakemake.utils import validate
+
+validate(config, "schema/config.schema.yaml")
 
 include: "rules/epang.smk"
 include: "rules/metabuli.smk"
@@ -19,7 +22,20 @@ def all_input(wildcards):
             run=config["metabuli"]["runs"].keys(),
             query=config["metabuli"]["query"].keys(),
             f=["classifications","report"])
-    print(input[0])
+    if "epa-ng" in config["tools"]:
+        input+=expand(
+            "results/taxonomy/{ref}/{run}/taxonomy.tsv",
+            run=config["run"],
+            ref=ref_name,
+        )
+        input+=expand(
+            "results/taxonomy/{ref}/{run}/config.yml", run=config["run"], ref=ref_name
+        ),
+        input+=expand(
+            "results/taxonomy/{ref}/{run}/software.txt",
+            run=config["run"],
+            ref=ref_name,
+        ),
     return input
 
 

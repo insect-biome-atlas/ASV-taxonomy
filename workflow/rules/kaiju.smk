@@ -1,4 +1,7 @@
 rule orffinder:
+    """
+    Translate custom Metabuli reference database to aa for use with kaiju
+    """
     output:
         "results/orffinder/{ref}.orfs.faa",
     input:
