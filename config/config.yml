@@ -1,8 +1,14 @@
+tools:
+  - metabuli
+  - kaiju
+  - epa-ng
+  - sintax
+
 metabuli:
   ref:
-    coi: "data/coi.subsample.fasta"
+    coi.test: "data/coi.subsample.fasta"
   query: 
-    coi_query: "data/coi.subsample.fasta"
+    coi.test_query: "data/coi.subsample.fasta"
   runs:
     default:
       options: ""
@@ -15,19 +21,34 @@ metabuli:
     ont:
       options: "--min-score 0.008"
 
+sintax:
+  ref:
+    coi.test: "data/coi.subsample.fasta"
+  query:
+    coi.test_query: "data/coi.subsample.fasta"
+  randseed: 15
+  cutoff: 0.8  
+
+kaiju:
+  ref:
+    coi.test: "data/coi.subsample.fasta"
+  query:
+    coi.test_query: "data/coi.subsample.fasta"
+  settings: ""
     
 epa-ng:
   # Set input options
-  input:
+  ref:
     lep_backbone:
-      reference_tree: "data/backbone.nex"
-      reference_tree_format: "nexus"
-      reference_msa: "data/lep_backbone_aln.nex"
-      reference_msa_format: "nexus"
-      query: "data/lep.fasta"
+      tree: "data/backbone.nex"
+      tree_format: "nexus"
+      msa: "data/lep_backbone_aln.nex"
+      msa_format: "nexus"
       tree_ranks: ["order","family","genus","species"]
       ref_taxonomy: ""
-  model: "GTR+F+I+I+R10"
+      model: "GTR+F+I+I+R10"
+  query: 
+    lep: "data/lep.fasta"
   gappa:
     # Ratio by which LWR is split between annotations if an edge has two possible
     # annotations. Specifies the amount going to the proximal annotation. If not
