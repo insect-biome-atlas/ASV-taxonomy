@@ -1,12 +1,12 @@
-use-conda: true
-reason: true
-keep-going: true
+use-conda: True
+use-envmodules: True
+reason: True
+keep-going: True
 printshellcmds: True
 rerun-triggers: mtime
 local-cores: 1
 jobs: 100
-configfile: config/config.yml
 slurm: True
-default-resources: "slurm_account=snicXXX-X-XXX"
+default-resources: "slurm_account=naiss2023-5-209"
 cluster-cancel: scancel
 latency-wait: 5
