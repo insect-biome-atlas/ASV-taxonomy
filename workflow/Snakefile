@@ -6,39 +6,72 @@ def mem_allowed(wildcards, threads):
 
 from snakemake.utils import validate
 
-validate(config, "schema/config.schema.yaml")
+for tool in ["sintax","metabuli","kaiju","epa-ng"]:
+    try:
+        config[tool]
+    except KeyError:
+        config[tool] = {"ref": {}, "query": {}}
+try:
+    config["metabuli"]["runs"]
+except KeyError:
+    config["metabuli"]["runs"] = {"default": ""}
 
 include: "rules/epang.smk"
 include: "rules/metabuli.smk"
 include: "rules/sintax.smk"
 include: "rules/kaiju.smk"
 
-
 def all_input(wildcards):
     input = []
     if "metabuli" in config["tools"]:
-        input += expand("results/metabuli/{ref}/classify/{run}/{query}_{f}.tsv", 
-            ref=config["metabuli"]["ref"].keys(), 
-            run=config["metabuli"]["runs"].keys(),
-            query=config["metabuli"]["query"].keys(),
-            f=["classifications","report"])
+        input+=rules.run_metabuli.input
+        #input += expand("results/metabuli/{ref}/classify/{run}/{query}_{f}.tsv", 
+        #    ref=config["metabuli"]["ref"].keys(), 
+        #    run=config["metabuli"]["runs"].keys(),
+        #    query=config["metabuli"]["query"].keys(),
+        #    f=["classifications","report"])
     if "epa-ng" in config["tools"]:
-        input+=expand(
-            "results/taxonomy/{ref}/{run}/taxonomy.tsv",
-            run=config["run"],
-            ref=ref_name,
-        )
-        input+=expand(
-            "results/taxonomy/{ref}/{run}/config.yml", run=config["run"], ref=ref_name
-        ),
-        input+=expand(
-            "results/taxonomy/{ref}/{run}/software.txt",
-            run=config["run"],
-            ref=ref_name,
-        ),
+        input+=rules.run_epa_ng.input
+        #input+=expand(
+        #    "results/taxonomy/{ref}/{run}/taxonomy.tsv",
+        #    run=config["run"],
+        #    ref=ref_name,
+        #)
+        #input+=expand(
+        #    "results/taxonomy/{ref}/{run}/config.yml", run=config["run"], ref=ref_name
+        #)
+        #input+=expand(
+        #    "results/taxonomy/{ref}/{run}/software.txt",
+        #    run=config["run"],
+        #    ref=ref_name,
+        #)
+    if "kaiju" in config["tools"]:
+        input+=rules.run_kaiju.input
+    if "sintax" in config["tools"]:
+        input+=rules.run_sintax.input
+    for tool in config["tools"]:
+        for ref in config[tool]["ref"]:
+            for query in config[tool]["query"]:
+                input.append(f"results/{tool}/{ref}/queries/{query}/config.yml")
+                input.append(f"results/{tool}/{ref}/queries/{query}/software.txt")
     return input
-
 
 rule all:
     input:
         all_input
+
+rule write_config:
+    output:
+        "results/{tool}/{ref}/queries/{query}/config.yml",
+    run:
+        import yaml
+        with open(output[0], "w") as fhout:
+            yaml.safe_dump(config, fhout, default_flow_style=False, sort_keys=False)
+
+rule write_software:
+    output:
+        "results/{tool}/{ref}/queries/{query}/software.txt",
+    shell:
+        """
+        conda list > {output}
+        """
