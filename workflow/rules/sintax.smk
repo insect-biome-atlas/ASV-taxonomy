@@ -21,7 +21,7 @@ rule sintax:
     conda: "../envs/vsearch.yml"
     resources:
         runtime = 60 * 24,
-        mem_mb=mem_allowed
+        constraint="mem256GB"
     threads: 8
     shell:
         """
