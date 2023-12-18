@@ -1,0 +1,124 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+
+description: snakemake configuration file
+
+type: object
+
+properties:
+  tools:
+    type: array
+    description: "List of tools to run"
+    items:
+      enum: ["metabuli", "sintax", "epa-ng", "kaiju"]
+    default: ["sintax"]
+  metabuli:
+    type: object
+    properties:
+      ref:
+        type: object
+        description: "Reference entries"
+        additionalProperties:
+          type: string
+      query:
+        type: object
+        description: "Query entries"
+        additionalProperties:
+          type: string
+      runs:
+        type: object
+        description: "Named settings for metabuli"
+        additionalProperties:
+          type: string
+  sintax:
+    type: object
+    properties:
+      ref: 
+        type: object
+        description: "Reference entries"
+        additionalProperties:
+          type: string
+      query:
+        type: object
+        description: "Query entries"
+        additionalProperties:
+          type: string
+      randseed:
+        type: integer
+        default: 15
+        description: "Random seed value for sintax"
+      cutoff:
+        type: number
+        default: 0.8
+        description: "Cutoff for sintax"
+  kaiju:
+    type: object
+    properties:
+      ref:
+        type: object
+        description: "Reference entries"
+        additionalProperties:
+          type: string
+      query:
+        type: object
+        description: "Query entries"
+        additionalProperties:
+          type: string
+      settings:
+        type: string
+        description: "Extra settings for kaiju"
+        default: ""
+  epa-ng:
+    type: object
+    properties:
+      ref: 
+        type: object
+        description: "Reference entries"
+        additionalProperties:
+          type: object
+          additionalProperties:
+            properties:
+              tree:
+                type: string
+                description: "Path to reference backbone phylogeny"
+                default: "data/backbone.nex"
+              tree_format:
+                type: string
+                description: "Format of reference backbone"
+                default: "nexus"
+                enum: ["newick", "nexus"]
+              msa:
+                type: string
+                description: "Path to reference backbone MSA"
+                default: "data/lep_aln.nex"
+              msa_format:
+                type: string
+                description: "Format of reference backbone MSA"
+                default: "nexus"
+                enum: ["fasta", "nexus"]
+              ref_taxonomy:
+                type: string
+                description: "Optional path to tab-separated file with taxonomic labels for each leaf in the backbone"
+                default: ""
+              model:
+                type: string
+                description: "Model used for backbone phylogeny"
+                default: "GTR+F+I+I+R10"
+      query:
+        type: object
+        description: "Query entries"
+        additionalProperties:
+          type: string
+      gappa:
+        type: object
+        default:
+          distribution_ratio: -1
+          consensus_thres: 1
+        properties:
+          distribution_ratio:
+            type: number
+            description: "Ratio by which LWR is split between annotations"
+            default: -1
+          consensus_thresh:
+            type: number
+            description: "For assignment of taxonomic labels to the reference tree, require this consensus threshold"
+            default: 1
