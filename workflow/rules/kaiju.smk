@@ -63,7 +63,8 @@ rule kaiju_build:
     threads: 20
     resources:
         runtime = 60 * 2,
-        mem_mb=mem_allowed
+        mem_mb=256000,
+        constraint = "mem256GB",
     params:
         db="results/kaiju/{ref}/{ref}"
     shell:
