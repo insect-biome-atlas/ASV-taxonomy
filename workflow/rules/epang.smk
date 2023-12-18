@@ -145,6 +145,9 @@ rule raxml_evaluate:
     params:
         model=lambda wildcards: config["epa-ng"]["ref"][wildcards.ref]["model"],
         prefix=lambda wildcards, output: os.path.dirname(output[0]) + "/info",
+    envmodules:
+        "bioinfo-tools",
+        "RAxML-NG/1.1.0"
     threads: 4
     resources:
         runtime=60,
@@ -165,6 +168,9 @@ rule epa_ng:
         "logs/epa-ng/{ref}/epa-ng.{query}.log",
     params:
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
+    envmodules:
+        "bioinfo-tools",
+        "EPA-ng/0.3.8"
     threads: 4
     resources:
         runtime=60,
@@ -201,6 +207,9 @@ rule gappa_assign:
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
         consensus_thresh=config["epa-ng"]["gappa"]["consensus_thresh"],
         distribution_ratio=get_dist_ratio(config),
+    envmodules:
+        "bioinfo-tools",
+        "gappa/0.7.1"
     threads: 4
     resources:
         runtime=120,
