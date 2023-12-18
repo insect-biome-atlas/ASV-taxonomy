@@ -17,10 +17,13 @@ rule sintax_fasta_to_gtdbfmt:
     input:
         lambda wildcards: config["metabuli"]["ref"][wildcards.ref],
     log:
-        "results/metabuli/{ref}/gtdbfmt/sintax_fasta_to_gtdbfmt.log"
+        "logs/metabuli/{ref}/gtdbfmt/sintax_fasta_to_gtdbfmt.log"
     params:
-        src=srcdir("scripts/coidb_to_gtdbfmt.py"),
+        src=srcdir("../scripts/coidb_to_gtdbfmt.py"),
         outdir=lambda wildcards, output: os.path.dirname(output.tax),
+    envmodules:
+        "bioinfo-tools",
+        "biopython"
     shell:
         """
         python {params.src} {input} {params.outdir} > {log} 2>&1

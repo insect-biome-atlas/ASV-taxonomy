@@ -183,7 +183,7 @@ def ref_taxonomy(wildcards):
 
 
 def get_dist_ratio(config):
-    if config["epa-ng"]["gappa"]["distribution-ratio"] == -1:
+    if config["epa-ng"]["gappa"]["distribution_ratio"] == -1:
         return ""
     else:
         return f"--distribution-ratio {config['gappa']['distribution_ratio']}"
@@ -199,7 +199,7 @@ rule gappa_assign:
     params:
         ranks_string=lambda wildcards: "|".join(config["epa-ng"]["ref"][wildcards.ref]["tree_ranks"]),
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
-        consensus_thresh=config["epa-ng"]["gappa"]["consensus-thresh"],
+        consensus_thresh=config["epa-ng"]["gappa"]["consensus_thresh"],
         distribution_ratio=get_dist_ratio(config),
     threads: 4
     resources:
@@ -227,22 +227,4 @@ rule gappa2taxdf:
     shell:
         """
         python {params.src} {input} {output} --ranks {params.ranks} >{log} 2>&1
-        """
-
-
-rule write_config:
-    output:
-        "results/epa-ng/{ref}/queries/{query}/config.yml",
-    run:
-        import yaml
-        with open(output[0], "w") as fhout:
-            yaml.safe_dump(config, fhout, default_flow_style=False, sort_keys=False)
-
-
-rule write_software:
-    output:
-        "results/epa-ng/{ref}/queries/{query}/software.txt",
-    shell:
-        """
-        conda list > {output}
         """

@@ -1,13 +1,21 @@
+localrules:
+    longest_orfs,
+
+rule run_kaiju:
+    input:
+        expand("results/kaiju/{ref}/queries/{query}/{query}.classify.tsv",
+            ref=config["kaiju"]["ref"].keys(), query=config["kaiju"]["query"].keys())
+
 rule orffinder:
     """
     Translate custom Metabuli reference database to aa for use with kaiju
     """
     output:
-        "results/orffinder/{ref}.orfs.faa",
+        "results/kaiju/{ref}/orffinder/orfs.faa",
     input:
         rules.sintax_fasta_to_gtdbfmt.output.seqs
     log:
-        "results/orffinder/{ref}.log",
+        "logs/kaiju/orffinder.{ref}.log",
     envmodules:
         "bioinfo-tools",
         "ORFfinder/0.4.3",
@@ -22,25 +30,65 @@ rule orffinder:
 
 rule longest_orfs:
     output:
-        faa="results/orffinder/{ref}.longest.faa",
-        txt="results/orffinder/{ref}.longest.lengths.txt",
+        faa="results/kaiju/{ref}/orffinder/longest.faa",
+        txt="results/kaiju/{ref}/orffinder/longest.lengths.txt",
     input:
-        rules.orffinder.output,
+        fa=rules.orffinder.output,
+        taxidmap="results/metabuli/{ref}/db/acc2taxid.map"
     log:
-        "logs/orffinder/{ref}.longest.log",
-    run:
-        seqs = {}
-        from Bio.SeqIO import parse
-        import re
-        for record in parse(input[0], "fasta"):
-            seq_id = re.sub("ORF\d+_(\w+).+", r"\g<1>", (record.id).split("|")[1])
-            l = len(record.seq)
-            if seq_id not in seqs.keys():
-                seqs[seq_id] = {"seq": str(record.seq), "id": record.id}
-            else:
-                if l > len(seqs[seq_id]["seq"]):
-                    seqs[seq_id] = {"seq": str(record.seq), "id": record.id}
-        with open(output.faa, "w") as fhout, open(output.txt, "w") as fhout_txt:
-            for seq_id, d in seqs.items():
-                fhout.write(f">{seq_id} {d['id']}\n{d['seq']}\n")
-                fhout_txt.write(f"{seq_id}\t{len(d['seq'])}\n")
+        "logs/kaiju/orffinder/{ref}.longest.log",
+    envmodules:
+        "bioinfo-tools",
+        "biopython"
+    params:
+        src=srcdir("../scripts/longest_orfs.py")
+    shell:
+        """
+        python {params.src} {input.fa} {output.faa} {output.txt} -s {input.taxidmap} > {log} 2>&1
+        """
+        
+rule kaiju_build:
+    output:
+        fmi="results/kaiju/{ref}/{ref}.fmi",
+        bwt=temp("results/kaiju/{ref}/{ref}.bwt"),
+        sa=temp("results/kaiju/{ref}/{ref}.sa")
+    input:
+        rules.longest_orfs.output.faa
+    log:
+        mkbwt="logs/kaiju/{ref}/kaiju-mkbwt.log",
+        mkfmi="logs/kaiju/{ref}/kaiju-mkfmi.log"
+    envmodules:
+        "bioinfo-tools",
+        "kaiju/1.7.2"
+    threads: 20
+    resources:
+        runtime = 60 * 2
+    params:
+        db="results/kaiju/{ref}/{ref}"
+    shell:
+        """
+        kaiju-mkbwt -n {threads} -a ACDEFGHIKLMNPQRSTVWY -o {params.db} {input} > {log.mkbwt} 2>&1
+        kaiju-mkfmi {params.db} > {log.mkfmi} 2>&1
+        """
+
+rule kaiju_classify:
+    output:
+        "results/kaiju/{ref}/queries/{query}/{query}.classify.tsv"
+    input:
+        qry=lambda wildcards: config["kaiju"]["query"][wildcards.query],
+        fmi=rules.kaiju_build.output.fmi,
+        nodes="results/metabuli/{ref}/db/taxonomy/nodes.dmp"
+    log:
+        "logs/kaiju/kaiju_classify.{ref}.{query}.log"
+    params:
+        settings=config["kaiju"]["settings"]
+    resources:
+        runtime = 60 * 10
+    envmodules:
+        "bioinfo-tools",
+        "kaiju/1.7.2"
+    threads: 8
+    shell:
+        """
+        kaiju -t {input.nodes} -f {input.fmi} -i {input.qry} -z {threads} -p {params.settings} -o {output} >{log} 2>&1
+        """
