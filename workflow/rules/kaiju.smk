@@ -62,7 +62,8 @@ rule kaiju_build:
         "kaiju/1.7.2"
     threads: 20
     resources:
-        runtime = 60 * 2
+        runtime = 60 * 2,
+        mem_mb=mem_allowed
     params:
         db="results/kaiju/{ref}/{ref}"
     shell:
@@ -83,7 +84,8 @@ rule kaiju_classify:
     params:
         settings=config["kaiju"]["settings"]
     resources:
-        runtime = 60 * 10
+        runtime = 60 * 10,
+        mem_mb=mem_allowed
     envmodules:
         "bioinfo-tools",
         "kaiju/1.7.2"
