@@ -138,7 +138,7 @@ rule raxml_evaluate:
     output:
         "results/epa-ng/{ref}/raxml-ng/{query}/info.raxml.bestModel",
     input:
-        tree=rules.nexus2newick.output,
+        tree=ref_tree,
         msa=rules.split_aln.output.ref_msa,
     log:
         "logs/epa-ng/{ref}/raxml-ng.{query}.log",
