@@ -118,7 +118,7 @@ rule hmm_align:
 
 rule split_aln:
     output:
-        ref_msa="results/epa-ng/{ref}/hmmalign/{query}/ref.fasta",
+        ref_msa="results/epa-ng/{ref}/hmmalign/{query}/reference.fasta",
         qry_msa="results/epa-ng/{ref}/hmmalign/{query}/query.fasta",
     input:
         ref_msa=ref_msa,
@@ -127,11 +127,12 @@ rule split_aln:
         "logs/epa-ng/{ref}/split_aln.{query}.log",
     params:
         outdir=lambda wildcards, output: os.path.dirname(output.ref_msa),
+    envmodules:
+        "bioinfo-tools",
+        "EPA-ng/0.3.8"
     shell:
         """
         epa-ng --redo --out-dir {params.outdir} --split {input.ref_msa} {input.msa} > {log} 2>&1
-        mv {params.outdir}/query.fasta {output.qry_msa}
-        mv {params.outdir}/reference.fasta {output.ref_msa}
         """
 
 rule raxml_evaluate:
