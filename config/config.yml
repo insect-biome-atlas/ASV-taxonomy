@@ -1,3 +1,9 @@
+benchmark:
+  coidb.221216:
+    fasta: "data/benchmark/coidb.221216.fasta"
+    taxonomy: "data/benchmark/coidb.221216.taxonomy.tsv.gz"
+    
+
 tools:
   - metabuli
   - kaiju
@@ -54,8 +60,8 @@ epa-ng:
     # annotations. Specifies the amount going to the proximal annotation. If not
     # set program will determine the ratio automatically from the 'distal length'
     # specified per placement.
-    distribution-ratio: -1
+    distribution_ratio: -1
     # For assignment of taxonomic labels to the reference tree, require this
     # consensus threshold. Example: if set to 0.6, and 60% of an inner node's
     # descendants share a taxonomic path, set that path at the inner node.
-    consensus-thresh: 1
+    consensus_thresh: 1
