@@ -36,7 +36,7 @@ rule parse_sintax:
     log:
         "logs/sintax/parse_sintax.{ref}.{query}.log"
     params:
-        src=srcdir("../scripts/sintax_tsv.py")
+        src="../scripts/sintax_tsv.py"
     shell:
         """
         python {params.src} -i {input} -o {output} > {log} 2>&1

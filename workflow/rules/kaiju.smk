@@ -41,7 +41,7 @@ rule longest_orfs:
         "bioinfo-tools",
         "biopython"
     params:
-        src=srcdir("../scripts/longest_orfs.py")
+        src="../scripts/longest_orfs.py"
     shell:
         """
         python {params.src} {input.fa} {output.faa} {output.txt} -s {input.taxidmap} > {log} 2>&1
