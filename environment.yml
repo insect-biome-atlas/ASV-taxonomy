@@ -11,3 +11,8 @@ dependencies:
   - gappa
   - epa-ng
   - raxml-ng
+  - vsearch
+  - tqdm
+  - pip
+  - pip:
+    - snakemake-executor-plugin-slurm
