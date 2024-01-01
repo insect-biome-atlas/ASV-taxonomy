@@ -20,6 +20,8 @@ include: "rules/epang.smk"
 include: "rules/metabuli.smk"
 include: "rules/sintax.smk"
 include: "rules/kaiju.smk"
+include: "rules/benchmark.smk"
+
 
 def all_input(wildcards):
     input = []
