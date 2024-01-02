@@ -30,7 +30,7 @@ rule mafft_align_db:
         mem_mb = mem_allowed,
     shell:
         """
-        mafft --thread {params.threads} {input.fasta} >{output} 2>{log}
+        mafft --thread {threads} {input.fasta} >{output} 2>{log}
         """
 
 rule sample_keep_species_in_db:
