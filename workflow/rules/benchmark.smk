@@ -28,8 +28,6 @@ rule mafft_align_db:
     resources:
         runtime = 60 * 24 * 10, # 10 days
         mem_mb = mem_allowed,
-    params:
-        outdir=lambda wildcards, output: os.path.dirname(output)
     shell:
         """
         mafft --thread {params.threads} {input.fasta} >{output} 2>{log}
