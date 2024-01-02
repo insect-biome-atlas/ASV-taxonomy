@@ -11,6 +11,30 @@ rule create_testdata:
             case=["case1-keep-species-in-db", "case2-keep-species-remove-identical", "case3-remove-species-keep-genus",
                   "case4-remove-genus-keep-family", "case5-remove-family"]),
 
+rule mafft_align_db:
+    """
+    Align the database sequences
+    """
+    output:
+        "benchmark/{db}/mafft-aligned.fasta",
+    input:
+        fasta = lambda wildcards: config["benchmark"][wildcards.db]["fasta"],
+    log:
+        "benchmark/{db}/mafft-align_db.log"
+    threads: 20
+    envmodules:
+        "bioinfo-tools",
+        "MAFFT/7.407"
+    resources:
+        runtime = 60 * 24 * 10, # 10 days
+        mem_mb = mem_allowed,
+    params:
+        outdir=lambda wildcards, output: os.path.dirname(output)
+    shell:
+        """
+        mafft --thread {params.threads} {input.fasta} >{output} 2>{log}
+        """
+
 rule sample_keep_species_in_db:
     """
     For this case, the train fasta is the same as the original database file, so use symlink
