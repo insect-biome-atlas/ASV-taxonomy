@@ -1,15 +1,34 @@
 import os
+import sys
 
 localrules:
     sample_keep_species_in_db,
     sample_keep_species_remove_identical
 
+cases = ["case1-keep-species-in-db", "case2-keep-species-remove-identical", "case3-remove-species-keep-genus",
+                     "case4-remove-genus-keep-family", "case5-remove-family"]
+
+# populate config
+if "benchmark" in config.keys():
+    for db in config["benchmark"].keys():
+        ranks = config["benchmark"][db]["ranks"]
+        for case in cases:
+            short = f"{db}.{case.split("-")[0]}"
+            try:
+                config["sintax"]["query"][short] = f"benchmark/{db}/{case}/test.fasta"
+            except KeyError:
+                config["sintax"] = {"query": {short: f"benchmark/{db}/{case}/test.fasta"}}
+            try:
+                config["sintax"]["ref"][short] = {"fasta": f"benchmark/{db}/{case}/train.fasta"}
+            except KeyError:
+                config["sintax"] = {"ref": {short: {"fasta": f"benchmark/{db}/{case}/train.fasta"}}}
+            config["sintax"]["ref"][short]["ranks"] = ranks    
+
 rule create_testdata:
     input:
         expand("benchmark/{db}/{case}/test.fasta", 
             db=config["benchmark"].keys(), 
-            case=["case1-keep-species-in-db", "case2-keep-species-remove-identical", "case3-remove-species-keep-genus",
-                  "case4-remove-genus-keep-family", "case5-remove-family"]),
+            case=cases),
 
 rule mafft_align_db:
     """
@@ -32,6 +51,41 @@ rule mafft_align_db:
         """
         mafft --thread {threads} {input.fasta} >{output} 2>{log}
         """
+
+rule clustalomega_align:
+    """
+    Align the database sequences with clustal omega
+    """
+    output:
+        "benchmark/{db}/clustalo-aligned.fasta",
+    input:
+        fasta = lambda wildcards: config["benchmark"][wildcards.db]["fasta"],
+        taxfile = lambda wildcards: config["benchmark"][wildcards.db]["taxonomy"],
+        asvs = "data/asv_seq.fasta"
+    log:
+        "benchmark/{db}/clustalo-align_db.log"
+    threads: 20
+    envmodules:
+        "bioinfo-tools",
+        "clustalo/1.2.4"
+    resources:
+        runtime = 60 * 24 * 10, 
+        mem_mb = mem_allowed,
+    shell:
+        """
+        python workflow/scripts/progressively_align.py \
+            --taxfile {input.taxfile} --seqsfile {input.fasta} \
+            --outfile {output} --threads {threads} --asvs {input.asvs} > {log} 2>&1
+        """
+
+rule trim_alignment:
+    input:
+        rules.mafft_align_db.output,
+    output:
+        "benchmark/{db}/mafft-aligned-trimmed.fasta",
+    log:
+        "benchmark/{db}/trim_alignment.log"
+    threads: 1
 
 rule sample_keep_species_in_db:
     """
@@ -163,4 +217,33 @@ rule sample_remove_family:
             --input_taxfile {input.tax} \
             --output_dir {params.outdir} \
             -k {params.k} -s {params.seed} --case 5 >{log} 2>&1
+        """
+
+## SINTAX EVAL ##
+def get_all_sintax_eval(wildcards):
+    input = []
+    for key in config["benchmark"].keys():
+        for case in cases:
+            short = f"{key}.{case.split('-')[0]}"
+            input.append(f"results/sintax/{short}/queries/{short}/sintax.eval.tsv")
+    return input
+
+rule eval_all_sintax:
+    input:
+        get_all_sintax_eval
+
+rule evaluate_sintax:
+    """
+    Evaluate the performance of the classifiers
+    """
+    output:
+        "results/sintax/{ref}/queries/{query}/sintax.eval.tsv"
+    input:
+        sintax=rules.parse_sintax.output,
+        tsv=lambda wildcards: config["sintax"]["query"][wildcards.query].replace(".fasta", ".tsv"),
+    log:
+        "results/sintax/{ref}/queries/{query}/sintax.eval.log"
+    shell:
+        """
+        python workflow/scripts/evaluate_classifier.py --classifier {input.sintax} --taxfile {input.tsv} -o {output} >{log} 2>&1
         """
