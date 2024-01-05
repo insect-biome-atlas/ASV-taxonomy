@@ -67,7 +67,8 @@ rule clustalomega_align:
     threads: 20
     envmodules:
         "bioinfo-tools",
-        "clustalo/1.2.4"
+        "clustalo/1.2.4",
+        "biopython/1.76"
     resources:
         runtime = 60 * 24 * 10, 
         mem_mb = mem_allowed,
