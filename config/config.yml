@@ -1,7 +1,8 @@
 benchmark:
   coidb.221216:
-    fasta: "data/benchmark/coidb.221216.fasta"
+    fasta: "data/benchmark/bold_clustered.sintax.fasta"
     taxonomy: "data/benchmark/coidb.221216.taxonomy.tsv.gz"
+    ranks: ["kingdom","phylum","class","order","family","genus","species","bold_bin"]
     
 
 tools:
@@ -9,6 +10,21 @@ tools:
   - kaiju
   - sintax
   #- epa-ng 
+
+dada2:
+  ref:
+    coi.test: 
+      fasta: "data/coi.subsample.fasta"
+      fmt: "sintax"
+      ranks: ["kingdom","phylum","class","order","family","genus","species"]
+    coidb.221216.7lvl-case1:
+      fasta: "benchmark/coidb.221216.7lvl/case3-remove-species-keep-genus/train.fasta"
+      fmt: "sintax"
+  query:
+    coidb.221216.7lvl-case1:
+      fasta: "benchmark/coidb.221216.7lvl/case3-remove-species-keep-genus/test.fasta"
+      fmt: "sintax"
+      ranks: ["kingdom","phylum","class","order","family","genus","species"]
 
 metabuli:
   ref:
