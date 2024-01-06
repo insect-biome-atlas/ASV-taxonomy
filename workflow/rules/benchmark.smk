@@ -69,6 +69,8 @@ rule clustalomega_align:
         "bioinfo-tools",
         "clustalo/1.2.4",
         "biopython/1.76"
+    conda:
+        "../envs/clustalo.yml"
     resources:
         runtime = 60 * 24 * 10, 
         mem_mb = mem_allowed,

@@ -1,0 +1,11 @@
+name: clustalo
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - clustalo=1.2.4
+  - python
+  - tqdm
+  - pandas
+  - biopython
