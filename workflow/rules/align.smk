@@ -68,7 +68,8 @@ def get_files(wildcards):
         if os.path.exists(config["alignment"]["fileList"]):
             with open(config["fileList"], 'r') as fhin:
                 for line in fhin:
-                    f = line.strip().replace(".fna", ".aln")
+                    basename = os.path.basename(line.strip()).replace(".fna", ".aln")
+                    f = f"results/alignment/{wildcards.db}/_aligned/{basename}"
                     files.append(f)
         return files
     except KeyError:
