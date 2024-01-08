@@ -68,7 +68,8 @@ def get_files(wildcards):
         if os.path.exists(config["alignment"]["fileList"]):
             with open(config["fileList"], 'r') as fhin:
                 for line in fhin:
-                    files.append(line.strip())
+                    f = line.strip().replace(".fna", ".aln")
+                    files.append(f)
         return files
     except KeyError:
         return []
