@@ -2,3 +2,4 @@ database:
   coidb.221216:
     fasta: "data/benchmark/bold_clustered.sintax.7levels.fasta"
     taxonomy: "data/benchmark/coidb.221216.taxonomy.tsv.gz"
+    fileList: "results/alignment/coidb.221216/fileList.txt"
