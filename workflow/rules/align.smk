@@ -42,7 +42,7 @@ rule clustalomega_align_to_profile:
         "results/alignment/{db}/_aligned/file_{i}.aln"
     input:
         profile=rules.clustalomega_create_profile.output.aln,
-        fasta="results/alignment/{db}/_files/file_{i}.fna"
+        fasta="results/alignment/{db}/file_{i}.fna"
     log:
         "benchmark/{db}/_logs/file_{i}.log"
     envmodules:
@@ -65,8 +65,8 @@ def get_files(wildcards):
     """
     files = []
     try:
-        if os.path.exists(config["alignment"]["fileList"]):
-            with open(config["fileList"], 'r') as fhin:
+        if os.path.exists(config["database"][wildcards.db]["fileList"]):
+            with open(config["database"][wildcards.db]["fileList"], 'r') as fhin:
                 for line in fhin:
                     basename = os.path.basename(line.strip()).replace(".fna", ".aln")
                     f = f"results/alignment/{wildcards.db}/_aligned/{basename}"
