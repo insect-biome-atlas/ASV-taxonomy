@@ -30,66 +30,6 @@ rule create_testdata:
             db=config["benchmark"].keys(), 
             case=cases),
 
-rule mafft_align_db:
-    """
-    Align the database sequences
-    """
-    output:
-        "benchmark/{db}/mafft-aligned.fasta",
-    input:
-        fasta = lambda wildcards: config["benchmark"][wildcards.db]["fasta"],
-    log:
-        "benchmark/{db}/mafft-align_db.log"
-    threads: 20
-    envmodules:
-        "bioinfo-tools",
-        "MAFFT/7.407"
-    resources:
-        runtime = 60 * 24 * 10, # 10 days
-        mem_mb = mem_allowed,
-    shell:
-        """
-        mafft --thread {threads} {input.fasta} >{output} 2>{log}
-        """
-
-rule clustalomega_align:
-    """
-    Align the database sequences with clustal omega
-    """
-    output:
-        "benchmark/{db}/clustalo-aligned.fasta",
-    input:
-        fasta = lambda wildcards: config["benchmark"][wildcards.db]["fasta"],
-        taxfile = lambda wildcards: config["benchmark"][wildcards.db]["taxonomy"],
-        asvs = "data/asv_seq.fasta"
-    log:
-        "benchmark/{db}/clustalo-align_db.log"
-    threads: 20
-    envmodules:
-        "bioinfo-tools",
-        "clustalo/1.2.4",
-        "biopython/1.76"
-    conda:
-        "../envs/clustalo.yml"
-    resources:
-        runtime = 60 * 24 * 10, 
-        mem_mb = mem_allowed,
-    shell:
-        """
-        python workflow/scripts/progressively_align.py \
-            --taxfile {input.taxfile} --seqsfile {input.fasta} \
-            --outfile {output} --threads {threads} --asvs {input.asvs} > {log} 2>&1
-        """
-
-rule trim_alignment:
-    input:
-        rules.mafft_align_db.output,
-    output:
-        "benchmark/{db}/mafft-aligned-trimmed.fasta",
-    log:
-        "benchmark/{db}/trim_alignment.log"
-    threads: 1
-
 rule sample_keep_species_in_db:
     """
     For this case, the train fasta is the same as the original database file, so use symlink
