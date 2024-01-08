@@ -44,7 +44,7 @@ rule clustalomega_align_to_profile:
         profile=rules.clustalomega_create_profile.output.aln,
         fasta="results/alignment/{db}/file_{i}.fna"
     log:
-        "benchmark/{db}/_logs/file_{i}.log"
+        "results/alignment/{db}/_logs/file_{i}.log"
     envmodules:
         "bioinfo-tools",
         "clustalo/1.2.4",
