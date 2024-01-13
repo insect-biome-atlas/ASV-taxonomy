@@ -21,6 +21,7 @@ include: "rules/metabuli.smk"
 include: "rules/sintax.smk"
 include: "rules/dada2.smk"
 include: "rules/kaiju.smk"
+include: "rules/subseq.smk"
 include: "rules/benchmark.smk"
 
 
