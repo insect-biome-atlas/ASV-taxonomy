@@ -56,6 +56,8 @@ rule sample_keep_species_in_db:
         k=100,
         seed=42,
         outdir=lambda wildcards, output: os.path.dirname(output.test_tsv)
+    resources:
+        runtime = 60,
     shell:
         """
         python workflow/scripts/create_testdata.py --input_fasta {input.fasta} \
@@ -84,6 +86,8 @@ rule sample_keep_species_remove_identical:
         k=100,
         seed=42,
         outdir=lambda wildcards, output: os.path.dirname(output.test_tsv)
+    resources:
+        runtime = 60,
     shell:
         """
         python workflow/scripts/create_testdata.py --input_fasta {input.fasta} \
@@ -110,6 +114,8 @@ rule sample_keep_genus:
         k=100,
         seed=42,
         outdir=lambda wildcards, output: os.path.dirname(output.test_tsv)
+    resources:
+        runtime = 60,
     shell:
         """
         python workflow/scripts/create_testdata.py --input_fasta {input.fasta} \
@@ -136,6 +142,8 @@ rule sample_keep_family:
         k=100,
         seed=42,
         outdir=lambda wildcards, output: os.path.dirname(output.test_tsv)
+    resources:
+        runtime = 60,
     shell:
         """
         python workflow/scripts/create_testdata.py --input_fasta {input.fasta} \
@@ -162,6 +170,8 @@ rule sample_remove_family:
         k=100,
         seed=42,
         outdir=lambda wildcards, output: os.path.dirname(output.test_tsv)
+    resources:
+        runtime = 60,
     shell:
         """
         python workflow/scripts/create_testdata.py --input_fasta {input.fasta} \
