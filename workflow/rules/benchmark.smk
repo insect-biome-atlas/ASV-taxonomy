@@ -1,9 +1,6 @@
 import os
 import sys
 
-localrules:
-    sample_keep_species_in_db,
-    sample_keep_species_remove_identical
 
 cases = ["case1-keep-species-in-db", "case2-keep-species-remove-identical", "case3-remove-species-keep-genus",
                      "case4-remove-genus-keep-family", "case5-remove-family"]
