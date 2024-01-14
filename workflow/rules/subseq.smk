@@ -11,9 +11,10 @@ localrules:
 
 splits=[f'{x:03d}' for x in list(range(1,10001))]
 
-rule all:
+rule subseq:
     input:
-        expand("benchmark/{db}/subseqs.fasta", db=config["benchmark"].keys())
+        expand("benchmark/{db}/_trimmed/{split}.fasta", split=splits, db=config["benchmark"].keys()),
+
 
 rule translate_db:
     """
@@ -110,7 +111,7 @@ rule align_subseqs:
     input:
         "benchmark/{db}/_subseq/{split}.fasta"
     log:
-        "benchmark/{db}/_aln/align_subseqs.log"
+        "benchmark/{db}/_aln/{split}.log"
     conda:
         "../envs/clustalo.yml"
     threads: 20
@@ -139,7 +140,7 @@ rule trim_subseq_aln:
     input:
         "benchmark/{db}/_aln/{split}.aln"
     log:
-        "benchmark/{db}/_aln/trim_subseq_aln.log"
+        "benchmark/{db}/_aln/{split}.log"
     params:
         min_len=300,
     shell:
@@ -151,7 +152,7 @@ rule gather_subseqs:
     output:
         "benchmark/{db}/subseqs.fasta"
     input:
-        expand("benchmark/{{db}}/_trim/{split}.fasta", split=splits),
+        expand("benchmark/{{db}}/_trimmed/{split}.fasta", split=splits),
     log:
         "benchmark/{db}/gather_subseqs.log"
     shell:
