@@ -154,7 +154,7 @@ rule sample_remove_family:
         test_tsv="benchmark/{db}/case5-remove-family/test.tsv",
         test_fasta="benchmark/{db}/case5-remove-family/test.fasta",
     input:
-        fasta = lambda wildcards: config["benchmark"][wildcards.db]["fasta"],
+        fasta = db_fasta,
         tax = lambda wildcards: config["benchmark"][wildcards.db]["taxonomy"],
     log:
         "benchmark/{db}/case5-remove-family/log.txt"
