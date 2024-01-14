@@ -30,6 +30,14 @@ rule create_testdata:
             db=config["benchmark"].keys(), 
             case=cases),
 
+def db_fasta(wildcards):
+    try:
+        if config["benchmark"][wildcards.db]["extract_subseq"]:            
+            return f"benchmark/{wildcards.db}/subseqs.fasta"
+    except KeyError:
+        pass
+    return config["benchmark"][wildcards.db]["fasta"]
+
 rule sample_keep_species_in_db:
     """
     For this case, the train fasta is the same as the original database file, so use symlink
@@ -40,7 +48,7 @@ rule sample_keep_species_in_db:
         test_tsv="benchmark/{db}/case1-keep-species-in-db/test.tsv",
         test_fasta="benchmark/{db}/case1-keep-species-in-db/test.fasta",
     input:
-        fasta = lambda wildcards: config["benchmark"][wildcards.db]["fasta"],
+        fasta = db_fasta,
         tax = lambda wildcards: config["benchmark"][wildcards.db]["taxonomy"],
     log:
         "benchmark/{db}/case1-keep-species-in-db/log.txt"
@@ -68,7 +76,7 @@ rule sample_keep_species_remove_identical:
         test_tsv="benchmark/{db}/case2-keep-species-remove-identical/test.tsv",
         test_fasta="benchmark/{db}/case2-keep-species-remove-identical/test.fasta",
     input:
-        fasta = lambda wildcards: config["benchmark"][wildcards.db]["fasta"],
+        fasta = db_fasta,
         tax = lambda wildcards: config["benchmark"][wildcards.db]["taxonomy"],
     log:
         "benchmark/{db}/case2-keep-species-remove-identical/log.txt"
@@ -94,7 +102,7 @@ rule sample_keep_genus:
         test_tsv="benchmark/{db}/case3-remove-species-keep-genus/test.tsv",
         test_fasta="benchmark/{db}/case3-remove-species-keep-genus/test.fasta",
     input:
-        fasta = lambda wildcards: config["benchmark"][wildcards.db]["fasta"],
+        fasta = db_fasta,
         tax = lambda wildcards: config["benchmark"][wildcards.db]["taxonomy"],
     log:
         "benchmark/{db}/case3-remove-species-keep-genus/log.txt"
@@ -120,7 +128,7 @@ rule sample_keep_family:
         test_tsv="benchmark/{db}/case4-remove-genus-keep-family/test.tsv",
         test_fasta="benchmark/{db}/case4-remove-genus-keep-family/test.fasta",
     input:
-        fasta = lambda wildcards: config["benchmark"][wildcards.db]["fasta"],
+        fasta = db_fasta,
         tax = lambda wildcards: config["benchmark"][wildcards.db]["taxonomy"],
     log:
         "benchmark/{db}/case4-remove-genus-keep-family/log.txt"
