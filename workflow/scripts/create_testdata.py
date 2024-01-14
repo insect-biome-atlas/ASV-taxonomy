@@ -52,7 +52,8 @@ def cluster_records(records, pid, threads):
     )
     # Read file with consensus sequences
     for record in parse(cons_out.name, "fasta"):
-        record.id = (record.id).replace("centroid=", "")
+        seqid=(record.id).split(";")[0]
+        record.id = seqid.replace("centroid=", "")
         clustered_records.append(record)
     cons_out.close()
     # Read file with cluster output
@@ -70,7 +71,8 @@ def read_fasta(fasta):
     """
     seqs = {}
     for record in tqdm.tqdm(parse(fasta, "fasta"), unit=" records", desc="reading fasta", leave=False):
-        seqs[record.id] = record
+        seqid = (record.id).split(";")[0]
+        seqs[seqid] = record
     return seqs
 
 def sample_dereplicated(species, seqs, df, k=100, seed=42):
@@ -179,9 +181,9 @@ def case1_sample_keep_species_in_db(args):
     with open(args.output_dir+"/test.fasta", "w") as fh:
         write_fasta(query_records, fh, "fasta")
     # write/symlink reference
-    sys.stderr.write("Symlinking reference fasta {db_fasta_abspath} to {args.output_dir}/train.fasta\n")
+    sys.stderr.write(f"Symlinking reference fasta {db_fasta_abspath} to {args.output_dir}/train.fasta\n")
     Path(train_fasta_abspath).symlink_to(db_fasta_abspath)
-    sys.stderr.write("Writing taxonomy for train set to {args.output_dir}/train.tsv\n")
+    sys.stderr.write(f"Writing taxonomy for train set to {args.output_dir}/train.tsv\n")
     df.to_csv(args.output_dir+"/train.tsv", sep="\t")
 
 
