@@ -11,7 +11,7 @@ rule sintax:
     output:
         "results/sintax/{ref}/queries/{query}/sintax.tab"
     input:
-        db=lambda wildcards: config["sintax"]["ref"][wildcards.ref],
+        db=lambda wildcards: config["sintax"]["ref"][wildcards.ref]["fasta"],
         qry=lambda wildcards: config["sintax"]["query"][wildcards.query]
     log:
         "logs/sintax/sintax.{ref}.{query}.log"
@@ -36,8 +36,9 @@ rule parse_sintax:
     log:
         "logs/sintax/parse_sintax.{ref}.{query}.log"
     params:
-        src="../scripts/sintax_tsv.py"
+        src="workflow/scripts/sintax_tsv.py",
+        ranks=lambda wildcards: config["sintax"]["ref"][wildcards.ref]["ranks"]
     shell:
         """
         python {params.src} -i {input} -o {output} > {log} 2>&1
-        """
+        """    
