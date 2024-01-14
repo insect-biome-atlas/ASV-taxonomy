@@ -1,7 +1,14 @@
 benchmark:
-  coidb.221216:
-    fasta: "data/benchmark/coidb.221216.fasta"
+  coidb.221216.7lvl:
+    fasta: "data/benchmark/bold_clustered.sintax.7levels.fasta"
     taxonomy: "data/benchmark/coidb.221216.taxonomy.tsv.gz"
+    ranks: ["kingdom","phylum","class","order","family","genus","species"]
+    # should the reference sequences be trimmed to the region of interest?
+    extract_subseq: True
+    subseq_min_len: 300 # Minimum length of subsequence to be extracted from the reference
+    hmm_from: 78
+    hmm_to: 202
+    asv_seq: "AATAAATAACATAAGATTTTGATTATTACCCCCTTCTTTATCTTTACTATTAATTAGAAGAATAGTTGAAACTGGAACAGGTACCGGATGAACTGTTTACCCACCATTATCTTCTATTATTGCTCATACAGGATCATCAGTAGATTTTTCAATTTTTTCTTTACATATTGCAGGAATTTCATCTATTTTAGGAGCTATTAATTTTATTTCAACTATATTAAATATAAAAATCAAATTTTTAAAATTTGATCAAATTTCATTATTTATTTGATCAATTTTAATTACAACTGTATTATTACTTTTATCATTACCTGTATTAGCAGGAGCAATTACTATACTATTAACAGATCGAAATTTAAATACATCATTTTTTGATCCTATAGGAGGAGGAGATCCAATTCTTTATCAACATTTATTT"
     
 
 tools:
@@ -12,17 +19,9 @@ tools:
 
 metabuli:
   ref:
-    case1: "benchmark/coidb.221216/case1-keep-species-in-db/train.fasta"
-    case2: "benchmark/coidb.221216/case2-keep-species-remove-identical/train.fasta"
-    case3: "benchmark/coidb.221216/case3-remove-species-keep-genus/train.fasta"
-    case4: "benchmark/coidb.221216/case4-remove-genus-keep-family/train.fasta"
-    case5: "benchmark/coidb.221216/case5-remove-family/train.fasta"
-  query: 
-    case1: "benchmark/coidb.221216/case1-keep-species-in-db/test.fasta"
-    case2: "benchmark/coidb.221216/case2-keep-species-remove-identical/test.fasta"
-    case3: "benchmark/coidb.221216/case3-remove-species-keep-genus/test.fasta"
-    case4: "benchmark/coidb.221216/case4-remove-genus-keep-family/test.fasta"
-    case5: "benchmark/coidb.221216/case5-remove-family/test.fasta"
+    coi.test: "data/coi.subsample.fasta"
+  query:
+    coi.test_query: "data/coi.subsample.fasta"
   runs:
     default:
       options: ""
@@ -37,9 +36,11 @@ metabuli:
 
 sintax:
   ref:
-    coi.test: "data/coi.subsample.fasta"
+    coi.test: 
+      fasta: "data/coi.subsample.fasta"
+      ranks: ["kingdom","phylum","class","order","family","genus","species","bold_bin"]
   query:
-    coi.test_query: "data/coi.subsample.fasta"
+      coi.test_query: "data/coi.subsample.fasta"
   randseed: 15
   cutoff: 0.8  
 
