@@ -94,9 +94,12 @@ rule extract_hmm_subseq:
         "benchmark/{db}/_subseq/{split}.log"
     params:
         min_len=lambda wildcards: config["benchmark"][wildcards.db]["subseq_min_len"],
+        hmm_from=lambda wildcards: config["benchmark"][wildcards.db]["hmm_from"],
+        hmm_to=lambda wildcards: config["benchmark"][wildcards.db]["hmm_to"],
     shell:
         """
-        python workflow/scripts/extract_hmm_subseq.py -m {params.min_len} {input.hmmout} {input.coord} {input.dnafile} > {output} 2>{log}
+        python workflow/scripts/extract_hmm_subseq.py -m {params.min_len} --hmm_from {params.hmm_from} \
+            --hmm_to {params.hmm_to} {input.hmmout} {input.coord} {input.dnafile} > {output} 2>{log}
         """
 
 def get_asv_seq(wildcards):
