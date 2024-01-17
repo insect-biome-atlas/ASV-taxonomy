@@ -117,9 +117,9 @@ rule align_subseqs:
         "benchmark/{db}/_aln/{split}.log"
     conda:
         "../envs/clustalo.yml"
-    threads: 20
+    threads: 4
     resources:
-        runtime = 60 * 24 * 10,
+        runtime = 30,
     params:
         asv_seq = lambda wildcards: get_asv_seq(wildcards),
         tmpdir = "$TMPDIR/clustalo.{db}",
