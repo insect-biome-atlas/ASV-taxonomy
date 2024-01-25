@@ -32,4 +32,88 @@ rule sintax2qiime_input:
             for seqid, record in seqs.items():
             fhout.write(f">{seqid}\n{str(record.seq)}\n")
 
-        
+def qiime2_seqs(wildcards):
+    if config["qiime2"]["ref"][wildcards.ref]["format"] == "sintax":
+        return f"results/qiime2/{wildcards.ref}/seqs.fasta"
+    else:
+        return config["qiime2"]["ref"][wildcards.ref]["fasta"]
+
+rule qiime2_import_seqs:
+    output:
+        "results/qiime2/{ref}/seqs.qza"
+    input:
+        qiime2_seqs,
+    log:
+        "results/qiime2/{ref}/qiime2_import_seqs.log"
+    conda: 
+        "../envs/qiime2.yml"
+    threads: 1
+    resources:
+        mem_mb = mem_allowed,
+        runtime = 60
+    shell:
+        """
+        qiime tools import --type 'FeatureData[Sequence]' --input-path {input} --output-path {output} > {log} 2>&1
+        """
+
+def qiime2_taxonomy(wildcards):
+    if config["qiime2"]["ref"][wildcards.ref]["format"] == "sintax":
+        return f"results/qiime2/{wildcards.ref}/taxonomy.tsv"
+    else:
+        return config["qiime2"]["ref"][wildcards.ref]["taxonomy"]
+
+rule qiime2_import_taxonomy:
+    output:
+        "results/qiime2/{ref}/taxonomy.qza"
+    input:
+        qiime2_taxonomy,
+    log:
+        "results/qiime2/{ref}/qiime2_import_taxonomy.log"
+    conda:
+        "../envs/qiime2.yml"
+    threads: 1
+    resources:
+        mem_mb = mem_allowed,
+        runtime = 60
+    shell:
+        """
+        qiime tools import --type 'FeatureData[Taxonomy]' --input-format HeaderlessTSVTaxonomyFormat \
+            --input-path {input} --output-path {output} > {log} 2>&1
+        """
+
+rule qiime2_train:
+    output:
+        "results/qiime2/{ref}/classifier.qza"
+    input:
+        tax="results/qiime2/{ref}/taxonomy.qza",
+        seq="results/qiime2/{ref}/seqs.qza"
+    log:
+        "results/qiime2/{ref}/qiime2_train.log"
+    conda:
+        "../envs/qiime2.yml"
+    resources:
+        runtime=60 * 10,
+        mem_mb = mem_allowed,
+    threads: 1
+    shell:
+        """
+        qiime feature-classifier fit-classifier-naive-bayes --i-reference-reads {input.seq} --i-reference-taxonomy {input.tax} \
+            --o-classifier {output} > {log} 2>&1
+        """
+
+rule qiime2_classify:
+    output:
+        "results/qiime2/{ref}/queries/{query}/taxonomy.qza"
+    input:
+        classifier="results/qiime2/{ref}/classifier.qza",
+        qry=config["qiime2"]["query"][wildcards.query],
+    threads: 1
+    conda:
+        "../envs/qiime2.yml"
+    resources:
+        runtime = 60*10,
+        mem_mb = mem_allowed,
+    shell:
+        """
+        qiime feature-classifier classify-sklearn --i-classifier {input.classifier} --i-reads {input.qry} --o-classification {output} > {log} 2>&1
+        """
