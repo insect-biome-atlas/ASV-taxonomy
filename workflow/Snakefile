@@ -6,22 +6,25 @@ def mem_allowed(wildcards, threads):
 
 from snakemake.utils import validate
 
-for tool in ["sintax","metabuli","kaiju","epa-ng"]:
+for tool in ["sintax","metabuli","kaiju","epa-ng","dada2","qiime2"]:
     try:
         config[tool]
     except KeyError:
         config[tool] = {"ref": {}, "query": {}}
+
 try:
     config["metabuli"]["runs"]
 except KeyError:
-    config["metabuli"]["runs"] = {"default": ""}
+    config["metabuli"]["runs"] = {"default": {"options": ""}}
+
+#validate(config, "schema/config.schema.yaml")
 
 include: "rules/epang.smk"
 include: "rules/metabuli.smk"
 include: "rules/sintax.smk"
 include: "rules/dada2.smk"
 include: "rules/kaiju.smk"
-include: "rules/subseq.smk"
+include: "rules/qiime2.smk"
 include: "rules/benchmark.smk"
 
 
