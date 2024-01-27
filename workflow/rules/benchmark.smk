@@ -5,22 +5,6 @@ import sys
 cases = ["case1-keep-species-in-db", "case2-keep-species-remove-identical", "case3-remove-species-keep-genus",
                      "case4-remove-genus-keep-family", "case5-remove-family"]
 
-# populate config
-if "benchmark" in config.keys():
-    for db in config["benchmark"].keys():
-        ranks = config["benchmark"][db]["ranks"]
-        for case in cases:
-            short = f"{db}.{case.split("-")[0]}"
-            try:
-                config["sintax"]["query"][short] = f"benchmark/{db}/{case}/test.fasta"
-            except KeyError:
-                config["sintax"] = {"query": {short: f"benchmark/{db}/{case}/test.fasta"}}
-            try:
-                config["sintax"]["ref"][short] = {"fasta": f"benchmark/{db}/{case}/train.fasta"}
-            except KeyError:
-                config["sintax"] = {"ref": {short: {"fasta": f"benchmark/{db}/{case}/train.fasta"}}}
-            config["sintax"]["ref"][short]["ranks"] = ranks    
-
 rule create_testdata:
     input:
         expand("benchmark/{db}/{case}/test.fasta", 
@@ -29,7 +13,8 @@ rule create_testdata:
 
 def db_fasta(wildcards):
     try:
-        if config["benchmark"][wildcards.db]["extract_subseq"]:            
+        if config["benchmark"][wildcards.db]["extract_subseq"]:
+            include: "subseq.smk"       
             return f"benchmark/{wildcards.db}/subseqs.fasta"
     except KeyError:
         pass
@@ -200,9 +185,21 @@ rule eval_all_sintax:
     input:
         get_all_sintax_eval
 
+def get_sintax_benchmark(wildcards):
+    input = []
+    for key in config["benchmark"].keys():
+        for case in cases:
+            short = f"{key}.{case.split('-')[0]}"
+            input.append(f"results/sintax/{short}/queries/{short}/sintax.tsv")
+    return input
+
+rule benchmark_sintax:
+    input:
+        get_sintax_benchmark
+
 rule evaluate_sintax:
     """
-    Evaluate the performance of the classifiers
+    Evaluate the performance of SINTAX
     """
     output:
         "results/sintax/{ref}/queries/{query}/sintax.eval.tsv"
