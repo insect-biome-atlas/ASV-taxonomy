@@ -32,7 +32,9 @@ def main(args):
     df = df.loc[common_seqs]
     df = df.loc[:, args.ranks]
     df = df.apply(refmt, args=(args.ranks[-1],), axis=0)
-    df.to_csv(args.tsv_output, sep="\t")
+    data = pd.DataFrame(df[args.ranks].apply(lambda row: " ".join(row.values.astype(str)), axis=1), columns=["Taxon"])
+    data.index.name = "Feature ID"
+    data.to_csv(args.tsv_output, sep="\t")
     with open(args.fasta_output, 'w') as fhout:
         for seqid, record in seqs.items():
             fhout.write(f">{seqid}\n{str(record.seq)}\n")
