@@ -17,7 +17,7 @@ rule sintax2dada2:
                 fhout.write(f">{desc}\n{str(record.seq)}\n")
 
 def get_dada2_ref(wildcards):
-    if config["dada2"]["ref"][wildcards.ref]["fmt"] == "sintax":
+    if config["dada2"]["ref"][wildcards.ref]["format"] == "sintax":
         return f"results/dada2/{wildcards.ref}/assignTaxonomy.fasta"
     else:
         return config["dada2"]["ref"][wildcards.ref]["fasta"]
@@ -31,9 +31,14 @@ rule dada2:
     params:
         taxLevels = lambda wildcards: config["dada2"]["ref"][wildcards.ref]["ranks"],
         seed = 42,
-    threads: 4
+    threads: 20
     conda:
         "../envs/dada2.yml"
+    resources:
+        mem_mb=mem_allowed,
+        runtime = 60 * 10
+    #container:
+    #    "docker://quay.io/biocontainers/bioconductor-dada2:1.30.0--r43hf17093f_0"
     script:
         "../scripts/dada2.R"
 
