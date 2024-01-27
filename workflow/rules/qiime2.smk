@@ -1,6 +1,7 @@
 localrules:
     sintax2qiime_input,
     qiime2_import_seqs,
+    qiime2_import_taxonomy
 
 rule sintax2qiime_input:
     """
@@ -43,7 +44,7 @@ rule qiime2_import_seqs:
     log:
         "results/qiime2/{ref}/qiime2_import_seqs.log"
     container:
-        "docker://qiime2/core:2020.8"
+        "docker://quay.io/qiime2/core:2023.9" # may have to be built as part of a SLURM job on Uppmax
     threads: 1
     resources:
         mem_mb = mem_allowed,
@@ -52,7 +53,7 @@ rule qiime2_import_seqs:
         """
         qiime tools import --type 'FeatureData[Sequence]' --input-path {input} --output-path {output} > {log} 2>&1
         """
-
+        
 def qiime2_taxonomy(wildcards):
     if config["qiime2"]["ref"][wildcards.ref]["format"] == "sintax":
         return f"results/qiime2/{wildcards.ref}/taxonomy.tsv"
@@ -66,15 +67,15 @@ rule qiime2_import_taxonomy:
         qiime2_taxonomy,
     log:
         "results/qiime2/{ref}/qiime2_import_taxonomy.log"
-    conda:
-        "../envs/qiime2.yml"
+    container:
+        "docker://quay.io/qiime2/core:2023.9" # may have to be built as part of a SLURM job on Uppmax
     threads: 1
     resources:
         mem_mb = mem_allowed,
         runtime = 60
     shell:
         """
-        qiime tools import --type 'FeatureData[Taxonomy]' --input-format HeaderlessTSVTaxonomyFormat \
+        qiime tools import --type 'FeatureData[Taxonomy]' --input-format TSVTaxonomyFormat \
             --input-path {input} --output-path {output} > {log} 2>&1
         """
 
@@ -86,12 +87,12 @@ rule qiime2_train:
         seq="results/qiime2/{ref}/seqs.qza"
     log:
         "results/qiime2/{ref}/qiime2_train.log"
-    conda:
-        "../envs/qiime2.yml"
+    container:
+        "docker://quay.io/qiime2/core:2023.9" # may have to be built as part of a SLURM job on Uppmax
     resources:
         runtime=60 * 10,
         mem_mb = mem_allowed,
-    threads: 1
+    threads: 20
     shell:
         """
         qiime feature-classifier fit-classifier-naive-bayes --i-reference-reads {input.seq} --i-reference-taxonomy {input.tax} \
@@ -106,11 +107,11 @@ rule qiime2_classify:
         qry=lambda wildcards: config["qiime2"]["query"][wildcards.query],
     log:
         "results/qiime2/{ref}/queries/{query}/qiime2_classify.log"
-    threads: 1
-    conda:
-        "../envs/qiime2.yml"
+    threads: 20
+    container:
+        "docker://quay.io/qiime2/core:2023.9" # may have to be built as part of a SLURM job on Uppmax
     resources:
-        runtime = 60*10,
+        runtime = 60 * 10,
         mem_mb = mem_allowed,
     shell:
         """
