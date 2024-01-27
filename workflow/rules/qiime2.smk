@@ -1,5 +1,6 @@
 localrules:
     sintax2qiime_input,
+    qiime2_import_seqs,
 
 rule sintax2qiime_input:
     """
@@ -41,8 +42,8 @@ rule qiime2_import_seqs:
         qiime2_seqs,
     log:
         "results/qiime2/{ref}/qiime2_import_seqs.log"
-    conda: 
-        "../envs/qiime2.yml"
+    container:
+        "docker://qiime2/core:2020.8"
     threads: 1
     resources:
         mem_mb = mem_allowed,
