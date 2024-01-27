@@ -20,9 +20,9 @@ rule sintax:
         cutoff=config["sintax"]["cutoff"]
     conda: "../envs/vsearch.yml"
     resources:
-        runtime = 60 * 24,
+        runtime = 60 * 10,
         constraint="mem256GB"
-    threads: 8
+    threads: 20
     shell:
         """
         vsearch --sintax {input.qry} --sintax_cutoff {params.cutoff} --randseed {params.seed} --db {input.db} --tabbedout {output} --threads 1 >{log} 2>&1
