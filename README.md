@@ -5,13 +5,15 @@
 This workflow runs a number of tools to assign taxonomy to ASV sequences. The tools used are:
 
 - [sintax](https://github.com/torognes/vsearch) (implemented in vsearch)
+- [dada2](https://github.com/benjjneb/dada2)
+- [Naive Bayes classifier](https://github.com/qiime2/qiime2) (implemented in qiime2)
 - [Metabuli](https://github.com/steineggerlab/Metabuli/)
 - [Kaiju](https://github.com/bioinformatics-centre/kaiju)
 - [EPA-ng](https://github.com/pierrebarbera/epa-ng)
 
 ## Installation
 
-The workflow is implemented in [Snakemake](https://snakemake.readthedocs.io/en/stable/) and uses [conda](https://docs.conda.io/en/latest/) to manage software dependencies. To install the workflow, clone the repository and create a conda environment with the required dependencies:
+The workflow is implemented in [Snakemake](https://snakemake.readthedocs.io/en/stable/) and uses [conda](https://docs.conda.io/en/latest/) and [apptainer](https://apptainer.org/) to manage software dependencies. To install the workflow, clone the repository and create a conda environment with the required dependencies:
 
 ```bash
 git clone git@github.com:johnne/IBA-taxonomy.git
@@ -32,6 +34,21 @@ Then you can use the flag `--profile slurm` to run the workflow on the cluster. 
 
 ```yaml
 default-resources: "slurm_account=naiss2023-5-209"
+```
+
+## Configuration
+
+Most tools used are configured using this config entry structure:
+
+```yaml
+<tool>:
+  ref:
+    <ref-name>:
+        fasta: "<path-to-reference>.fasta"
+        taxonomy: "<path-to-reference-taxonomy>.tsv"
+        ranks: ["kingdom","phylum","class","order","family","genus","species"]
+  query:
+    <query-name>: "<path-to-query>.fasta"
 ```
 
 ## Benchmark setup
