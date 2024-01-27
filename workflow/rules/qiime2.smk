@@ -17,20 +17,16 @@ rule sintax2qiime_input:
     output:
         tsv="results/qiime2/{ref}/taxonomy.tsv",
         fasta="results/qiime2/{ref}/seqs.fasta",
-    run:
-        import pandas as pd
-        from Bio.SeqIO import parse
-        df = pd.read_csv(input.tsv, sep="\t", index_col=0)
-        seqs = {}
-        for record in parse(input.fasta, "fasta"):
-            seqid = (record.id).split(";")[0]
-            seqs[seqid] = record
-        common_seqs = list(set(seqs.keys()).intersection(list(df.index)))
-        df = df.loc[common_seqs]
-        df.to_csv(output.tsv, sep="\t")
-        with open(output.fasta, 'r') as fhout:
-            for seqid, record in seqs.items():
-            fhout.write(f">{seqid}\n{str(record.seq)}\n")
+    log:
+        "results/qiime2/{ref}/sintax2qiime_input.log"
+    params:
+        ranks = lambda wildcards: config["qiime2"]["ref"][wildcards.ref]["ranks"],
+        output_dir = lambda wildcards, output: os.path.dirname(output.tsv),
+    shell:
+        """
+        python workflow/scripts/sintax2qiime_input.py {input.tsv} {input.fasta} {output.tsv} {output.fasta} --ranks {params.ranks}> {log} 2>&1
+        """
+        
 
 def qiime2_seqs(wildcards):
     if config["qiime2"]["ref"][wildcards.ref]["format"] == "sintax":
@@ -106,7 +102,9 @@ rule qiime2_classify:
         "results/qiime2/{ref}/queries/{query}/taxonomy.qza"
     input:
         classifier="results/qiime2/{ref}/classifier.qza",
-        qry=config["qiime2"]["query"][wildcards.query],
+        qry=lambda wildcards: config["qiime2"]["query"][wildcards.query],
+    log:
+        "results/qiime2/{ref}/queries/{query}/qiime2_classify.log"
     threads: 1
     conda:
         "../envs/qiime2.yml"
