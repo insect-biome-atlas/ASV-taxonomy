@@ -29,7 +29,7 @@ valid_boot[is.na(valid_boot)] <- 0
 tx$confidence <- valid_boot
 
 # (3) Reorder columns before writing to file
-expected_order <- c("ASV_ID",paste0("tax.",taxLevels),"confidence","sequence")
+expected_order <- c("ASV_ID",paste0("tax.",taxLevels),"confidence")
 expected_order <- intersect(expected_order,colnames(tx))
 taxa_export <- subset(tx, select = expected_order)
 colnames(taxa_export) <- sub("tax.", "", colnames(taxa_export))
