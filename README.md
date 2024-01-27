@@ -34,3 +34,40 @@ Then you can use the flag `--profile slurm` to run the workflow on the cluster. 
 default-resources: "slurm_account=naiss2023-5-209"
 ```
 
+## Benchmark setup
+
+This workflow can create train and test datasets from a set of reference sequences. The rules file `workflow/rules/benchmark.smk` contains 
+rules to generate 5 sets of train/test datasets. It requires a `benchmark:` entry in the configuration file that should look like this:
+
+```yaml
+benchmark:
+    coidb.221216.7lvl:
+        fasta: "data/benchmark/bold_clustered.sintax.7levels.fasta"
+        taxonomy: "data/benchmark/coidb.221216.taxonomy.tsv.gz"
+        ranks: ["kingdom","phylum","class","order","family","genus","species"]
+        extract_subseq: False
+        subseq_min_len: 300
+        hmm_from: 78
+        hmm_to: 202
+        asv_seq: "AATAAATAACATAAGATTTTGA"
+```
+
+In the example above, `coidb.221216.7lvl` is a name given to this reference database. The `fasta:` entry should point to a fasta file with the
+reference sequences. `taxonomy:` should point to a tab-separated file with sequence ids in the first column and taxonomic rank labels in 
+subsequent columns. Using the fasta and taxonomy file 5 pairs of train/test datasets are produced. For each set, 100 species are sampled and 1 sequence picked from each and put into the `test` set. In cases 2-5, the test sequences are also removed from the `train` set.
+
+| benchmark dataset name | description | output directory | 
+| ---------------------- | ----------- | ---------------- |
+| sample_keep_species_in_db | sample 100 species into test, keep all seqs in train | "benchmark/coidb.221216.7lvl/case1-keep-species-in-db/" |
+| sample_keep_species_remove_identical | sample 100 species into test, remove test and identical sequences from train | "benchmark/coidb.221216.7lvl/case2-sample_keep_species_remove_identical/" |
+| sample_keep_genus | sample 100 species into test, remove all sequences for sampled species from train but ensure that at least one sequence for the same genus is kept | "benchmark/coidb.221216.7lvl/case3-sample_keep_genus/" |
+| sample_keep_family | sample 100 species into test, remove all sequences for sampled genera from train but ensure at least one sequence for each family is kept | "benchmark/coidb.221216.7lvl/case4-remove-genus-keep-family/" |
+| sample_remove_family | sample 100 species into test, remove all sequences for sampled families from train | "benchmark/coidb.221216.7lvl/case5-remove-family/" |
+
+If the config param `subseq:` is set to `True` the reference sequences will be trimmed to match the ASV region being studied. The region is matched using the COX1 hmm as a proxy. First you need to know the location on the HMM to which your ASVs match. This can be done by translating an ASV sequence into it's amino acid sequence, then using it as a query with `hmmscan` *e.g.* on the [HMMER website](https://www.ebi.ac.uk/Tools/hmmer/search/hmmscan). Enter the hmm start and stop coordinates in the config as `hmm_from:` and `hmm_to:`, respectively. In addition, supply the nucleotide sequence for one of the ASVs in the study using the `asv_seq:` config entry. Using this information, subsequences will be extracted from the references following these steps:
+
+1. translate seqs to the longest open reading frame (using the Invertebrate Mitochondrial Code table)
+2. hmmsearch of translated amino acid sequences against the COX1 HMM
+3. reference seqs that overlap the `hmm_from:` and `hmm_to:` region are extracted and converted back to nucleotide sequences
+4. multiple sequence alignments with matched nucleotide sequences together with the ASV sequence from `asv_seq:`
+5. trimming of aligned sequences to only the start and stop of the ASV sequence, followed by gap removal
