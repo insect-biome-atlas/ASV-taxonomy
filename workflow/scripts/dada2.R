@@ -1,3 +1,5 @@
+# Assign the most specific rank with a confidence (bootstrap) of at least 0.5.
+# Adapted from https://github.com/nf-core/ampliseq/blob/master/modules/local/dada2_taxonomy.nf
 library(dada2)
 seq<-getSequences(snakemake@input$qry)
 taxLevels <- snakemake@params$taxLevels
@@ -5,7 +7,7 @@ ref<- snakemake@input$ref
 threads <- snakemake@threads
 set.seed(snakemake@params$seed)
 
-taxa <- assignTaxonomy(seq,ref, taxLevels = taxLevels, multithread = threads, verbose=TRUE, outputBootstraps = TRUE)
+taxa <- assignTaxonomy(seq,ref, minBoot = 50, taxLevels = taxLevels, multithread = threads, verbose=TRUE, outputBootstraps = TRUE)
 tx <- data.frame(ASV_ID = names(seq), taxa, sequence = row.names(taxa$tax), row.names = names(seq))
 
 # (2) Set confidence to the bootstrap for the most specific taxon
