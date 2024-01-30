@@ -1,3 +1,6 @@
+localrules:
+    sintax2dada2,
+    
 rule sintax2dada2:
     """
     Converts sintax formatted fasta to assignTaxonomy format
@@ -31,12 +34,13 @@ rule dada2:
     params:
         taxLevels = lambda wildcards: config["dada2"]["ref"][wildcards.ref]["ranks"],
         seed = 42,
+        minBoot = config["dada2"]["minBoot"],
     threads: 20
     conda:
         "../envs/dada2.yml"
     resources:
         mem_mb=mem_allowed,
-        runtime = 60 * 10
+        runtime = 60 * 1
     #container:
     #    "docker://quay.io/biocontainers/bioconductor-dada2:1.30.0--r43hf17093f_0"
     script:
