@@ -2,6 +2,12 @@ import os
 import sys
 
 
+localrules:
+    evaluate_dada2,
+    evaluate_sintax,
+    eval_all_dada2,
+    eval_all_sintax
+
 cases = ["case1-keep-species-in-db", "case2-keep-species-remove-identical", "case3-remove-species-keep-genus",
                      "case4-remove-genus-keep-family", "case5-remove-family"]
 
@@ -173,18 +179,6 @@ rule sample_remove_family:
         """
 
 ## SINTAX EVAL ##
-def get_all_sintax_eval(wildcards):
-    input = []
-    for key in config["benchmark"].keys():
-        for case in cases:
-            short = f"{key}.{case.split('-')[0]}"
-            input.append(f"results/sintax/{short}/queries/{short}/sintax.eval.tsv")
-    return input
-
-rule eval_all_sintax:
-    input:
-        get_all_sintax_eval
-
 def get_sintax_benchmark(wildcards):
     input = []
     for key in config["benchmark"].keys():
@@ -197,6 +191,18 @@ rule benchmark_sintax:
     input:
         get_sintax_benchmark
 
+def get_all_sintax_eval(wildcards):
+    input = []
+    for key in config["benchmark"].keys():
+        for case in cases:
+            short = f"{key}.{case.split('-')[0]}"
+            input.append(f"results/sintax/{short}/queries/{short}/sintax.eval.tsv")
+    return input
+
+rule eval_all_sintax:
+    input:
+        get_all_sintax_eval
+
 rule evaluate_sintax:
     """
     Evaluate the performance of SINTAX
@@ -204,11 +210,96 @@ rule evaluate_sintax:
     output:
         "results/sintax/{ref}/queries/{query}/sintax.eval.tsv"
     input:
-        sintax=rules.parse_sintax.output,
-        tsv=lambda wildcards: config["sintax"]["query"][wildcards.query].replace(".fasta", ".tsv"),
+        res=rules.parse_sintax.output,
+        tax=lambda wildcards: config["sintax"]["query"][wildcards.query].replace(".fasta", ".tsv"),
     log:
         "results/sintax/{ref}/queries/{query}/sintax.eval.log"
     shell:
         """
-        python workflow/scripts/evaluate_classifier.py --classifier {input.sintax} --taxfile {input.tsv} -o {output} >{log} 2>&1
+        python workflow/scripts/evaluate_classifier.py {input.res} {input.tax} --classifier sintax --output {output} >{log} 2>&1
+        """
+
+## DADA2 EVAL ##
+def get_dada2_benchmark(wildcards):
+    input = []
+    for key in config["benchmark"].keys():
+        for case in cases:
+            short = f"{key}.{case.split('-')[0]}"
+            input.append(f"results/dada2/{short}/queries/{short}/dada2.tsv")
+    return input
+
+rule benchmark_dada2:
+    input:
+        get_dada2_benchmark
+
+def get_all_dada2_eval(wildcards):
+    input = []
+    for key in config["benchmark"].keys():
+        for case in cases:
+            short = f"{key}.{case.split('-')[0]}"
+            input.append(f"results/dada2/{short}/queries/{short}/dada2.eval.tsv")
+    return input
+
+rule eval_all_dada2:
+    input:
+        get_all_dada2_eval
+
+rule evaluate_dada2:
+    """
+    Evaluate the performance of DADA2
+    """
+    output:
+        "results/dada2/{ref}/queries/{query}/dada2.eval.tsv"
+    input:
+        res="results/dada2/{ref}/queries/{query}/dada2.tsv",
+        tax=lambda wildcards: config["dada2"]["query"][wildcards.query].replace(".fasta", ".tsv"),
+    log:
+        "results/dada2/{ref}/queries/{query}/dada2.eval.log"
+    params:
+        classifier_str = f"dada2.minBoot{config["dada2"]["minBoot"]}"
+    shell:
+        """
+        python workflow/scripts/evaluate_classifier.py {input.res} {input.tax} --classifier {params.classifier_str} --output {output} >{log} 2>&1
+        """
+
+## QIIME2 EVAL ##
+def get_qiime2_benchmark(wildcards):
+    input = []
+    for key in config["benchmark"].keys():
+        for case in cases:
+            short = f"{key}.{case.split('-')[0]}"
+            for classifier in ["sklearn", "vsearch"]:
+                input.append(f"results/qiime2/{short}/queries/{short}/taxonomy_{classifier}.tsv")
+    return input
+
+rule benchmark_qiime2:
+    input:
+        get_qiime2_benchmark
+
+def get_all_qiime2_eval(wildcards):
+    input = []
+    for key in config["benchmark"].keys():
+        for case in cases:
+            short = f"{key}.{case.split('-')[0]}"
+            for classifier in ["sklearn", "vsearch"]:
+                input.append(f"results/qiime2/{short}/queries/{short}/taxonomy_{classifier}.eval.tsv")
+    return input
+
+rule eval_all_qiime2:
+    input:
+        get_all_qiime2_eval
+
+rule evaluate_qiime2:
+    output:
+        "results/qiime2/{ref}/queries/{query}/taxonomy_{classifier}.eval.tsv"
+    input:
+        res="results/qiime2/{ref}/queries/{query}/taxonomy_{classifier}.tsv",
+        tax=lambda wildcards: config["qiime2"]["query"][wildcards.query].replace(".fasta", ".tsv"),
+    log:
+        "results/qiime2/{ref}/queries/{query}/qiime2_{classifier}.eval.log"
+    params:
+        classifier_str = lambda wildcards: "qiime2_"+wildcards.classifier,
+    shell:
+        """
+        python workflow/scripts/evaluate_classifier.py {input.res} {input.tax} --classifier {params.classifier_str} --output {output} >{log} 2>&1
         """
