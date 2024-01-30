@@ -11,7 +11,8 @@ import sys
 import tqdm
 from argparse import ArgumentParser
 
-def cluster_records(records, pid, threads):
+
+def cluster_records(records, pid, threads, clust_method="cluster_fast", usersort=False):
     """
     Takes a list of sequence records, writes to a temporary file and
     clusters them with vsearch.
@@ -20,6 +21,10 @@ def cluster_records(records, pid, threads):
     :param pid: Percent id to cluster by
     :return:
     """
+    if usersort:
+        extra = "--usersort"
+    else:
+        extra = ""
     clustered_records = []
     uc_res = {}
     if len(records) == 1:
@@ -35,8 +40,9 @@ def cluster_records(records, pid, threads):
     subprocess.call(
         [
             "vsearch",
-            "--cluster_fast",
+            f"--{clust_method}",
             f.name,
+            extra,
             "--id",
             str(pid),
             "--consout",
