@@ -2,7 +2,8 @@ localrules:
     sintax2qiime_input,
     qiime2_import_qry_seqs,
     qiime2_import_ref_seqs,
-    qiime2_import_taxonomy
+    qiime2_import_taxonomy,
+    qiime2_export
 
 rule sintax2qiime_input:
     """
@@ -130,7 +131,7 @@ rule qiime2_classify_sklearn:
         classifier="results/qiime2/{ref}/classifier.qza",
         qry="results/qiime2/{ref}/queries/{query}/seqs.qza"
     log:
-        "results/qiime2/{ref}/queries/{query}/qiime2_classify.log"
+        "results/qiime2/{ref}/queries/{query}/qiime2_classify_sklearn.log"
     threads: 20
     container:
         "docker://quay.io/qiime2/core:2023.9" # may have to be built as part of a SLURM job on Uppmax
@@ -144,12 +145,14 @@ rule qiime2_classify_sklearn:
 
 rule qiime2_classify_vsearch:
     output:
-        "results/qiime2/{ref}/queries/{query}/taxonomy_vsearch.qza"
+        vsearch="results/qiime2/{ref}/queries/{query}/taxonomy_vsearch.qza",
+        hits="results/qiime2/{ref}/queries/{query}/taxonomy_hits.qza",
     input:
         ref="results/qiime2/{ref}/seqs.qza",
+        ref_tax="results/qiime2/{ref}/taxonomy.qza",
         qry="results/qiime2/{ref}/queries/{query}/seqs.qza",
     log:
-        "results/qiime2/{ref}/queries/{query}/qiime2_classify.log"
+        "results/qiime2/{ref}/queries/{query}/qiime2_classify_vsearch.log"
     threads: 20
     container:
         "docker://quay.io/qiime2/core:2023.9" # may have to be built as part of a SLURM job on Uppmax
@@ -158,8 +161,8 @@ rule qiime2_classify_vsearch:
         mem_mb = mem_allowed,
     shell:
         """
-        qiime feature-classifier classify-consensus-vsearch --i-classifier {input.ref} --i-reads {input.qry} \
-            --o-classification {output} --p-threads {threads} > {log} 2>&1
+        qiime feature-classifier classify-consensus-vsearch --i-reference-reads {input.ref} --i-query {input.qry} \
+            --i-reference-taxonomy {input.ref_tax} --o-classification {output.vsearch} --o-search-results {output.hits} --p-threads {threads} > {log} 2>&1
         """
 
 rule qiime2_export:
@@ -167,10 +170,12 @@ rule qiime2_export:
         "results/qiime2/{ref}/queries/{query}/taxonomy_{classifier}.tsv"
     input:
         "results/qiime2/{ref}/queries/{query}/taxonomy_{classifier}.qza"
+    log:
+        "results/qiime2/{ref}/queries/{query}/qiime2_export_{classifier}.log"
     container: 
         "docker://quay.io/qiime2/core:2023.9" # may have to be built as part of a SLURM job on Uppmax
     threads: 1
     shell:
         """
-        qiime tools export --input-path taxonomy.qza --output-path {output[0]} --output-format TSVTaxonomyFormat
+        qiime tools export --input-path {input} --output-path {output[0]} --output-format TSVTaxonomyFormat > {log} 2>&1
         """
