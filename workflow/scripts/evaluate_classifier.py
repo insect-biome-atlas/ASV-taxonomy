@@ -54,16 +54,22 @@ def main(args):
     taxfile = args.taxonomy
     classifier = args.classifier
     tax = pd.read_csv(taxfile, sep="\t", header=0, index_col=0)
-    res = pd.read_csv(resultsfile, sep="\t", header=0, index_col=0)
+    res = pd.read_csv(resultsfile, sep="\t", header=0, index_col=0, dtype=str)
+    res.fillna("", inplace=True)
     res.rename(index = lambda x: x.split(";")[0], inplace=True)
+    #res.replace(to_replace="_", value=" ", inplace=True, regex=True)
     if res.shape[1] == 2 and res.index.name=="Feature ID":
         res = parse_qiime2(res)
     ranks = [r for r in _ranks if r in list(set(list(tax.columns)).intersection(list(res.columns)))]
     eval = {}
     df = pd.merge(res, tax, left_index=True, right_index=True, suffixes=["_res", "_truth"])
     for rank in ranks:
-        eval[rank] = df.loc[df[rank+"_res"] == df[rank+"_truth"]].shape[0]
-    eval = pd.DataFrame(eval, index=["correct"]).T
+        eval[rank] = {}
+        eval[rank]["correct"] = df.loc[df[rank+"_res"] == df[rank+"_truth"]].shape[0]
+        eval[rank]["unassigned"] = df.loc[(df[rank+"_res"]=="")|(df[rank+"_res"]=="unassigned")|(df[rank+"_res"].str.startswith("unclassified."))].shape[0]
+        eval[rank]["incorrect"] = df.loc[(df[rank+"_res"]!=df[rank+"_truth"])&(df[rank+"_res"]!="")&(df[rank+"_res"]!="unassigned")&(~df[rank+"_res"].str.startswith("unclassified."))].shape[0]
+        
+    eval = pd.DataFrame(eval).T
     eval = eval.assign(n = pd.Series(df.shape[0], index=eval.index))
     eval = eval.assign(classifier = pd.Series([classifier]*eval.shape[0], index=eval.index))
     eval.index.name = "rank"
