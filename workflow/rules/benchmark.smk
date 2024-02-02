@@ -5,8 +5,12 @@ import sys
 localrules:
     evaluate_dada2,
     evaluate_sintax,
+    evaluate_qiime2,
     eval_all_dada2,
-    eval_all_sintax
+    eval_all_sintax,
+    eval_all_qiime2,
+    eval_all_qiime2_sklearn,
+    eval_all_qiime2_vsearch
 
 cases = ["case1-keep-species-in-db", "case2-keep-species-remove-identical", "case3-remove-species-keep-genus",
                      "case4-remove-genus-keep-family", "case5-remove-family"]
@@ -288,6 +292,32 @@ def get_all_qiime2_eval(wildcards):
 rule eval_all_qiime2:
     input:
         get_all_qiime2_eval
+
+def get_all_qiime2_eval_vsearch(wildcards):
+    input = []
+    for key in config["benchmark"].keys():
+        for case in cases:
+            short = f"{key}.{case.split('-')[0]}"
+            for classifier in ["vsearch"]:
+                input.append(f"results/qiime2/{short}/queries/{short}/taxonomy_{classifier}.eval.tsv")
+    return input
+
+rule eval_all_qiime2_vsearch:
+    input:
+        get_all_qiime2_eval_vsearch
+
+def get_all_qiime2_eval_sklearn(wildcards):
+    input = []
+    for key in config["benchmark"].keys():
+        for case in cases:
+            short = f"{key}.{case.split('-')[0]}"
+            for classifier in ["sklearn"]:
+                input.append(f"results/qiime2/{short}/queries/{short}/taxonomy_{classifier}.eval.tsv")
+    return input
+
+rule eval_all_qiime2_sklearn:
+    input:
+        get_all_qiime2_eval_sklearn
 
 rule evaluate_qiime2:
     output:
