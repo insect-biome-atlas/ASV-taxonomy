@@ -88,3 +88,9 @@ If the config param `subseq:` is set to `True` the reference sequences will be t
 3. reference seqs that overlap the `hmm_from:` and `hmm_to:` region are extracted and converted back to nucleotide sequences
 4. multiple sequence alignments with matched nucleotide sequences together with the ASV sequence from `asv_seq:`
 5. trimming of aligned sequences to only the start and stop of the ASV sequence, followed by gap removal
+
+To benchmark `sintax`, `dada2` and the `naive-bayes` and `vsearch` classifiers, run:
+
+```bash
+snakemake --configfile config/benchmark-config.yml --profile slurm eval_all_dada2 eval_all_qiime2 eval_all_sintax
+```
