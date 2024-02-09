@@ -220,7 +220,7 @@ rule evaluate_sintax:
         "results/sintax/{ref}/queries/{query}/sintax.eval.log"
     shell:
         """
-        python workflow/scripts/evaluate_classifier.py {input.res} {input.tax} --classifier sintax --output {output} >{log} 2>&1
+        python workflow/scripts/evaluate_classifier.py {input.res} --taxonomy {input.tax} --classifier sintax --output {output} >{log} 2>&1
         """
 
 ## DADA2 EVAL ##
@@ -263,7 +263,7 @@ rule evaluate_dada2:
         classifier_str = f"dada2.minBoot{config["dada2"]["minBoot"]}"
     shell:
         """
-        python workflow/scripts/evaluate_classifier.py {input.res} {input.tax} --classifier {params.classifier_str} --output {output} >{log} 2>&1
+        python workflow/scripts/evaluate_classifier.py {input.res} --taxonomy {input.tax} --classifier {params.classifier_str} --output {output} >{log} 2>&1
         """
 
 ## QIIME2 EVAL ##
@@ -331,5 +331,5 @@ rule evaluate_qiime2:
         classifier_str = lambda wildcards: "qiime2_"+wildcards.classifier,
     shell:
         """
-        python workflow/scripts/evaluate_classifier.py {input.res} {input.tax} --classifier {params.classifier_str} --output {output} >{log} 2>&1
+        python workflow/scripts/evaluate_classifier.py {input.res} --taxonomy {input.tax} --classifier {params.classifier_str} --output {output} >{log} 2>&1
         """

@@ -1,6 +1,10 @@
 localrules:
     sintax2dada2,
-    
+
+rule run_dada2:
+    input:
+        expand("results/dada2/{ref}/queries/{query}/dada2.tsv", ref=config["dada2"]["ref"], query=config["dada2"]["query"])
+        
 rule sintax2dada2:
     """
     Converts sintax formatted fasta to assignTaxonomy format
