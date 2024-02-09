@@ -1,5 +1,10 @@
 .snakemake
+.cache
 results
 logs
 benchmark
 data
+envs
+raxml-ng
+.vscode
+__pycache__
