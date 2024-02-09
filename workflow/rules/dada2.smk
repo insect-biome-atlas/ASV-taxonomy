@@ -41,7 +41,7 @@ rule dada2:
         "../envs/dada2.yml"
     resources:
         mem_mb=mem_allowed,
-        runtime = 30
+        runtime = 60 * 10
     #container:
     #    "docker://quay.io/biocontainers/bioconductor-dada2:1.30.0--r43hf17093f_0"
     script:
