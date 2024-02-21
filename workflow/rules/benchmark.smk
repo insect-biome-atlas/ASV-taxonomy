@@ -24,7 +24,7 @@ rule create_testdata:
 def db_fasta(wildcards):
     try:
         if config["benchmark"][wildcards.db]["extract_subseq"]:
-            include: "subseq.smk"       
+            include: "subseq.smk"
             return f"benchmark/{wildcards.db}/subseqs.fasta"
     except KeyError:
         pass
