@@ -11,13 +11,15 @@ for tool in ["sintax","metabuli","kaiju","epa-ng","dada2","qiime2"]:
         config[tool]
     except KeyError:
         config[tool] = {"ref": {}, "query": {}}
+        if tool == "dada2":
+            config[tool]["minBoot"] = 80
 
 try:
     config["metabuli"]["runs"]
 except KeyError:
     config["metabuli"]["runs"] = {"default": {"options": ""}}
 
-#validate(config, "schema/config.schema.yaml")
+#validate(config, "schema/config.schema.yaml", set_default=True)
 
 include: "rules/epang.smk"
 include: "rules/metabuli.smk"
@@ -25,7 +27,10 @@ include: "rules/sintax.smk"
 include: "rules/dada2.smk"
 include: "rules/kaiju.smk"
 include: "rules/qiime2.smk"
-include: "rules/benchmark.smk"
+if "benchmark" in config.keys():
+    include: "rules/benchmark.smk"
+if "benchmark_phylo" in config.keys():
+    include: "rules/benchmark_phylo.smk"
 
 
 def all_input(wildcards):
