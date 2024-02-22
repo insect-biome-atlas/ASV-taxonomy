@@ -173,9 +173,10 @@ rule epa_ng:
     envmodules:
         "bioinfo-tools",
         "EPA-ng/0.3.8"
-    threads: 4
+    threads: 20
     resources:
         runtime=60,
+        mem_mb=mem_allowed,
     shell:
         """
         epa-ng --redo -T {threads} --tree {input.ref_tree} --ref-msa {input.ref_msa} \
@@ -212,9 +213,10 @@ rule gappa_assign:
     envmodules:
         "bioinfo-tools",
         "gappa/0.7.1"
-    threads: 4
+    threads: 20
     resources:
-        runtime=120,
+        runtime=60 *2,
+        mem_mb=mem_allowed,
     shell:
         """
         gappa examine assign --threads {threads} --out-dir {params.outdir} \
