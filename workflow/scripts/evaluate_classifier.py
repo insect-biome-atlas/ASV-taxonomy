@@ -60,6 +60,7 @@ def evaluate(res, taxfile, _ranks):
     tax = pd.read_csv(taxfile, sep="\t", header=0, index_col=0)
     ranks = [r for r in _ranks if r in list(set(list(tax.columns)).intersection(list(res.columns)))]
     df = pd.merge(res, tax, left_index=True, right_index=True, suffixes=["_res", "_truth"])
+    eval = {}
     for rank in ranks:
         eval[rank] = {}
         eval[rank]["correct"] = df.loc[df[rank+"_res"] == df[rank+"_truth"]].shape[0]
@@ -67,6 +68,7 @@ def evaluate(res, taxfile, _ranks):
         eval[rank]["incorrect"] = df.loc[(df[rank+"_res"]!=df[rank+"_truth"])&(df[rank+"_res"]!="")&(df[rank+"_res"]!="unassigned")&(~df[rank+"_res"].str.startswith("unclassified."))].shape[0]
     eval = pd.DataFrame(eval).T
     eval = eval.assign(n = pd.Series(df.shape[0], index=eval.index))
+    return eval
 
 def main(args):
     _ranks = ["superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species"]
