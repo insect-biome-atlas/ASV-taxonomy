@@ -22,14 +22,12 @@ rule nexus2newick:
         lambda wildcards: config["epa-ng"]["ref"][wildcards.ref]["tree"],
     log:
         "logs/epa-ng/{ref}/nexus2newick.log",
-    params:
-        src=srcdir("../scripts/nexus2newick.py")
     envmodules:
         "bioinfo-tools",
         "biopython"
     shell:
         """
-        python {params.src} {input} {output} >{log} 2>&1
+        python workflow/scripts/nexus2newick.py {input} {output} >{log} 2>&1
         """
 
 def ref_tree(wildcards):
@@ -38,6 +36,11 @@ def ref_tree(wildcards):
     elif config["epa-ng"]["ref"][wildcards.ref]["tree_format"] == "newick":
         return config["epa-ng"]["ref"][wildcards.ref]["tree"]
 
+def ref_msa(wildcards):
+    if config["epa-ng"]["ref"][wildcards.ref]["msa_format"] == "nexus":
+        return rules.nexus2fasta.output[0]
+    elif config["epa-ng"]["ref"]["wildcards.ref"]["msa_format"] == "fasta":
+        return config["epa-ng"]["ref"][wildcards.ref]["msa"]
 
 rule extract_ref_taxonomy:
     output:
@@ -48,10 +51,9 @@ rule extract_ref_taxonomy:
         "logs/epa-ng/{ref}/extract_ref_taxonomy.log",
     params:
         ranks=lambda wildcards: config["epa-ng"]["ref"][wildcards.ref]["tree_ranks"],
-        src=srcdir("../scripts/extract_ref_taxonomy.py")
     shell:
         """
-        python {params.src} {input} {output} --ranks {params.ranks} >{log} 2>&1
+        python workflow/scripts/extract_ref_taxonomy.py {input} {output} --ranks {params.ranks} >{log} 2>&1
         """
 
 
@@ -62,14 +64,12 @@ rule nexus2fasta:
         lambda wildcards: config["epa-ng"]["ref"][wildcards.ref]["msa"],
     log:
         "logs/epa-ng/{ref}/nexus2fasta.log",
-    params:
-        src=srcdir("../scripts/convertalign.py")
     envmodules:
         "bioinfo-tools",
         "biopython"
     shell:
         """
-        python {params.src} {input} nexus {output} fasta >{log} 2>&1
+        python workflow/scripts/convertalign.py {input} nexus {output} fasta >{log} 2>&1
         """
 
 def ref_msa(wildcards):
@@ -101,11 +101,11 @@ rule hmm_align:
     input:
         hmm=rules.hmm_build.output,
         qry=lambda wildcards: config["epa-ng"]["query"][wildcards.query],
-        ref_msa=lambda wildcards: config["epa-ng"]["ref"][wildcards.ref]["msa"],
+        ref_msa=ref_msa
     log:
         "logs/epa-ng/{ref}/hmmalign.{query}.log",
     resources:
-        runtime=120,
+        runtime=60*24*10,
         mem_mb=mem_allowed,
     envmodules:
         "bioinfo-tools",
@@ -118,7 +118,7 @@ rule hmm_align:
 
 rule split_aln:
     output:
-        ref_msa="results/epa-ng/{ref}/hmmalign/{query}/ref.fasta",
+        ref_msa="results/epa-ng/{ref}/hmmalign/{query}/reference.fasta",
         qry_msa="results/epa-ng/{ref}/hmmalign/{query}/query.fasta",
     input:
         ref_msa=ref_msa,
@@ -127,30 +127,35 @@ rule split_aln:
         "logs/epa-ng/{ref}/split_aln.{query}.log",
     params:
         outdir=lambda wildcards, output: os.path.dirname(output.ref_msa),
+    envmodules:
+        "bioinfo-tools",
+        "EPA-ng/0.3.8"
     shell:
         """
         epa-ng --redo --out-dir {params.outdir} --split {input.ref_msa} {input.msa} > {log} 2>&1
-        mv {params.outdir}/query.fasta {output.qry_msa}
-        mv {params.outdir}/reference.fasta {output.ref_msa}
         """
 
 rule raxml_evaluate:
     output:
         "results/epa-ng/{ref}/raxml-ng/{query}/info.raxml.bestModel",
     input:
-        tree=rules.nexus2newick.output,
+        tree=ref_tree,
         msa=rules.split_aln.output.ref_msa,
     log:
         "logs/epa-ng/{ref}/raxml-ng.{query}.log",
     params:
         model=lambda wildcards: config["epa-ng"]["ref"][wildcards.ref]["model"],
         prefix=lambda wildcards, output: os.path.dirname(output[0]) + "/info",
-    threads: 4
+    envmodules:
+        "bioinfo-tools",
+        "RAxML-NG/1.1.0"
+    threads: 2
     resources:
         runtime=60,
+        mem_mb=mem_allowed,
     shell:
         """
-        raxml-ng --threads {threads} --evaluate --msa {input.msa} --tree {input.tree} --prefix {params.prefix} --model {params.model} >{log} 2>&1
+        raxml-ng --redo --threads {threads} --evaluate --msa {input.msa} --tree {input.tree} --prefix {params.prefix} --model {params.model} >{log} 2>&1
         """
 
 rule epa_ng:
@@ -165,9 +170,13 @@ rule epa_ng:
         "logs/epa-ng/{ref}/epa-ng.{query}.log",
     params:
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
-    threads: 4
+    envmodules:
+        "bioinfo-tools",
+        "EPA-ng/0.3.8"
+    threads: 20
     resources:
-        runtime=60,
+        runtime=60*24,
+        mem_mb=mem_allowed,
     shell:
         """
         epa-ng --redo -T {threads} --tree {input.ref_tree} --ref-msa {input.ref_msa} \
@@ -201,9 +210,15 @@ rule gappa_assign:
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
         consensus_thresh=config["epa-ng"]["gappa"]["consensus_thresh"],
         distribution_ratio=get_dist_ratio(config),
-    threads: 4
+    #envmodules:
+    #    "bioinfo-tools",
+    #    "gappa/0.7.1"
+    conda:
+        "../envs/gappa.yml"
+    threads: 20
     resources:
-        runtime=120,
+        runtime=60 *2,
+        mem_mb=mem_allowed,
     shell:
         """
         gappa examine assign --threads {threads} --out-dir {params.outdir} \
@@ -223,8 +238,7 @@ rule gappa2taxdf:
         "logs/epa-ng/{ref}/gappa2taxdf.{query}.log"
     params:
         ranks=lambda wildcards: config["epa-ng"]["ref"][wildcards.ref]["tree_ranks"],
-        src=srcdir("../scripts/gappa2taxdf.py"),
     shell:
         """
-        python {params.src} {input} {output} --ranks {params.ranks} >{log} 2>&1
+        python workflow/scripts/gappa2taxdf.py {input} {output} --ranks {params.ranks} >{log} 2>&1
         """

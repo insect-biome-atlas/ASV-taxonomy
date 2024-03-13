@@ -19,7 +19,7 @@ rule sintax_fasta_to_gtdbfmt:
     log:
         "logs/metabuli/{ref}/gtdbfmt/sintax_fasta_to_gtdbfmt.log"
     params:
-        src=srcdir("../scripts/coidb_to_gtdbfmt.py"),
+        src="../scripts/coidb_to_gtdbfmt.py",
         outdir=lambda wildcards, output: os.path.dirname(output.tax),
     envmodules:
         "bioinfo-tools",

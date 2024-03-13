@@ -1,8 +1,32 @@
+benchmark:
+  coidb.221216:
+    fasta: "data/benchmark/bold_clustered.sintax.fasta"
+    taxonomy: "data/benchmark/coidb.221216.taxonomy.tsv.gz"
+    ranks: ["kingdom","phylum","class","order","family","genus","species","bold_bin"]
+    
+
 tools:
   - metabuli
   - kaiju
   - sintax
   #- epa-ng 
+
+dada2:
+  ref:
+    coi.test: 
+      fasta: "data/coi.subsample.fasta"
+      fmt: "sintax"
+      ranks: ["kingdom","phylum","class","order","family","genus","species"]
+  query:
+    coi.test: "data/coi.subsample.fasta"
+
+qiime2:
+  ref:
+    coi.test:
+      fasta: "data/coi.subsample.fasta"
+      taxonomy: "data/benchmark/coidb.221216.taxonomy.tsv.gz"
+      fmt: "sintax"
+      ranks: ["kingdom","phylum","class","order","family","genus","species"]
 
 metabuli:
   ref:
@@ -23,7 +47,8 @@ metabuli:
 
 sintax:
   ref:
-    coi.test: "data/coi.subsample.fasta"
+    coi.test: 
+      fasta: "data/coi.subsample.fasta"
   query:
     coi.test_query: "data/coi.subsample.fasta"
   randseed: 15
@@ -54,8 +79,8 @@ epa-ng:
     # annotations. Specifies the amount going to the proximal annotation. If not
     # set program will determine the ratio automatically from the 'distal length'
     # specified per placement.
-    distribution-ratio: -1
+    distribution_ratio: -1
     # For assignment of taxonomic labels to the reference tree, require this
     # consensus threshold. Example: if set to 0.6, and 60% of an inner node's
     # descendants share a taxonomic path, set that path at the inner node.
-    consensus-thresh: 1
+    consensus_thresh: 1

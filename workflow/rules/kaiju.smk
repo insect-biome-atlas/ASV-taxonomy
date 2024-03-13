@@ -41,7 +41,7 @@ rule longest_orfs:
         "bioinfo-tools",
         "biopython"
     params:
-        src=srcdir("../scripts/longest_orfs.py")
+        src="../scripts/longest_orfs.py"
     shell:
         """
         python {params.src} {input.fa} {output.faa} {output.txt} -s {input.taxidmap} > {log} 2>&1
@@ -62,7 +62,9 @@ rule kaiju_build:
         "kaiju/1.7.2"
     threads: 20
     resources:
-        runtime = 60 * 2
+        runtime = 60 * 2,
+        mem_mb=256000,
+        constraint = "mem256GB",
     params:
         db="results/kaiju/{ref}/{ref}"
     shell:
@@ -83,7 +85,8 @@ rule kaiju_classify:
     params:
         settings=config["kaiju"]["settings"]
     resources:
-        runtime = 60 * 10
+        runtime = 60 * 10,
+        mem_mb=mem_allowed
     envmodules:
         "bioinfo-tools",
         "kaiju/1.7.2"
