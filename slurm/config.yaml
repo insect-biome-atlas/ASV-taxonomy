@@ -1,13 +1,11 @@
 use-conda: True
 use-envmodules: True
-#reason: True
+use-apptainer: True
 keep-going: True
 printshellcmds: True
 rerun-triggers: mtime
 local-cores: 1
 jobs: 100
-#slurm: True
 default-resources: "slurm_account=naiss2023-5-209"
-#cluster-cancel: scancel
 latency-wait: 5
 executor: slurm
