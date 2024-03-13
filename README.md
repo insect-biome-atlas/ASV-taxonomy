@@ -51,6 +51,48 @@ Most tools used are configured using this config entry structure:
     <query-name>: "<path-to-query>.fasta"
 ```
 
+Below are defails on each tool and how to configure them.
+
+### EPA-ng
+
+[EPA-ng](https://github.com/pierrebarbera/epa-ng) ([Barbera et al 2019](https://doi.org/10.1093/sysbio/syy054)) is a tool for placing sequences into a reference phylogenetic tree. It requires a reference tree, a multiple sequence alignment and a set of query sequences. The taxonomic assignments of each leaf in the tree can either be supplied in a text file or extracted from leaf labels in the tree. 
+
+The config entry for EPA-ng should look like in the following example:
+
+```yaml
+epa-ng:
+  ref:
+    chester_2017:
+      tree: "data/chesters_2017/chesters_2017_trimmed_tree.nwk"
+      tree_format: "newick"
+      msa: "data/chesters_2017/hmmersearch_OUT_ch2017_noduplic_trimmed.fas"
+      msa_format: "fasta"
+      ref_taxonomy: "data/chesters_2017/taxonomy.tsv"
+      tree_ranks:
+        - "superkingdom"
+        - "phylum"
+        - "class"
+        - "order"
+        - "family"
+        - "genus"
+        - "species"
+      model: "GTR+G+F"
+  query: 
+    lep: "data/lep.fasta"
+  gappa:
+    # Ratio by which LWR is split between annotations if an edge has two possible
+    # annotations. Specifies the amount going to the proximal annotation. If not
+    # set program will determine the ratio automatically from the 'distal length'
+    # specified per placement.
+    distribution_ratio: -1
+    # For assignment of taxonomic labels to the reference tree, require this
+    # consensus threshold. Example: if set to 0.6, and 60% of an inner node's
+    # descendants share a taxonomic path, set that path at the inner node.
+    consensus_thresh: 1
+```
+
+
+
 ## Benchmark setup
 
 This workflow can create train and test datasets from a set of reference sequences. The rules file `workflow/rules/benchmark.smk` contains 
