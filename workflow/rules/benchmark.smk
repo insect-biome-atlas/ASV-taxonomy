@@ -260,7 +260,7 @@ rule evaluate_dada2:
     log:
         "results/dada2/{ref}/queries/{query}/dada2.eval.log"
     params:
-        classifier_str = f"dada2.minBoot{config["dada2"]["minBoot"]}"
+        classifier_str = f"dada2.minBoot{config['dada2']['minBoot']}"
     shell:
         """
         python workflow/scripts/evaluate_classifier.py {input.res} --taxonomy {input.tax} --classifier {params.classifier_str} --output {output} >{log} 2>&1
