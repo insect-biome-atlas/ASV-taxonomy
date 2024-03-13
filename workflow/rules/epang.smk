@@ -105,7 +105,7 @@ rule hmm_align:
     log:
         "logs/epa-ng/{ref}/hmmalign.{query}.log",
     resources:
-        runtime=120,
+        runtime=60*24*10,
         mem_mb=mem_allowed,
     envmodules:
         "bioinfo-tools",
@@ -149,13 +149,13 @@ rule raxml_evaluate:
     envmodules:
         "bioinfo-tools",
         "RAxML-NG/1.1.0"
-    threads: 20
+    threads: 2
     resources:
         runtime=60,
         mem_mb=mem_allowed,
     shell:
         """
-        raxml-ng --threads {threads} --evaluate --msa {input.msa} --tree {input.tree} --prefix {params.prefix} --model {params.model} >{log} 2>&1
+        raxml-ng --redo --threads {threads} --evaluate --msa {input.msa} --tree {input.tree} --prefix {params.prefix} --model {params.model} >{log} 2>&1
         """
 
 rule epa_ng:
@@ -175,7 +175,7 @@ rule epa_ng:
         "EPA-ng/0.3.8"
     threads: 20
     resources:
-        runtime=60,
+        runtime=60*24,
         mem_mb=mem_allowed,
     shell:
         """
@@ -210,9 +210,11 @@ rule gappa_assign:
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
         consensus_thresh=config["epa-ng"]["gappa"]["consensus_thresh"],
         distribution_ratio=get_dist_ratio(config),
-    envmodules:
-        "bioinfo-tools",
-        "gappa/0.7.1"
+    #envmodules:
+    #    "bioinfo-tools",
+    #    "gappa/0.7.1"
+    conda:
+        "../envs/gappa.yml"
     threads: 20
     resources:
         runtime=60 *2,
