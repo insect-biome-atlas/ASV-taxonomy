@@ -142,6 +142,17 @@ kaiju:
   settings: ""
     
 epa-ng:
+  # preplacement heuristics to test
+  # dyn-heur: default, this is the accumulated threshold method where branches are added to the set 
+  # of candidates until the sum of their LWR exceed a user specified threshold. The default setting is 
+  # 0.99999, corresponding to a covered likelihood weight of 99.999%.
+  # baseball-heur: works identically to the baseball heuristic from pplacer, with default settings 
+  # (--strike-box 3.0, --max-strikes 6, --max-pitches 40)
+  # no-heur: disables preplacement heuristics
+  heuristics:
+    - "dyn-heur"
+    - "baseball-heur"
+    - "no-heur"
   # Set input options
   ref:
     chester_2017:
@@ -175,3 +186,26 @@ epa-ng:
     # descendants share a taxonomic path, set that path at the inner node.
     consensus_thresh: 1
     
+plusplacer-taxtastic:
+# Set input options
+  ref:
+    chester_2017:
+      tree: "data/chesters_2017/chesters_2017_trimmed_tree.nwk"
+      tree_format: "newick"
+      msa: "data/chesters_2017/hmmersearch_OUT_ch2017_noduplic_trimmed.fas"
+      msa_format: "fasta"
+      ref_taxonomy: "data/chesters_2017/taxonomy.tsv"
+      tree_ranks:
+        - "superkingdom"
+        - "phylum"
+        - "class"
+        - "order"
+        - "family"
+        - "genus"
+        - "species"
+      model: "GTR+G+F"
+  query: 
+    coidb.221216.7lvl.case1: "benchmark_phylo/coidb.221216.7lvl/case1-sample_keep_species_remove_identical_phylo/test.fasta"
+    coidb.221216.7lvl.case2: "benchmark_phylo/coidb.221216.7lvl/case2-sample_keep_genus_remove_species_phylo/test.fasta"
+    coidb.221216.7lvl.case3: "benchmark_phylo/coidb.221216.7lvl/case3-sample_keep_family_remove_genus_phylo/test.fasta"
+    coidb.221216.7lvl.case4: "benchmark_phylo/coidb.221216.7lvl/case4-sample_keep_order_remove_family_phylo/test.fasta"

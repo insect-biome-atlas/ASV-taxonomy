@@ -74,6 +74,17 @@ epa-ng:
       model: "GTR+F+I+I+R10"
   query: 
     lep: "data/lep.fasta"
+  # preplacement heuristics to test
+  # dyn-heur: default, this is the accumulated threshold method where branches are added to the set 
+  # of candidates until the sum of their LWR exceed a user specified threshold. The default setting is 
+  # 0.99999, corresponding to a covered likelihood weight of 99.999%.
+  # baseball-heur: works identically to the baseball heuristic from pplacer, with default settings 
+  # (--strike-box 3.0, --max-strikes 6, --max-pitches 40)
+  # no-heur: disables preplacement heuristics
+  heuristics:
+    - "dyn-heur"
+    - "baseball-heur"
+    - "no-heur"
   gappa:
     # Ratio by which LWR is split between annotations if an edge has two possible
     # annotations. Specifies the amount going to the proximal annotation. If not

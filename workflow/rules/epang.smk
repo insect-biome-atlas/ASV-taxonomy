@@ -7,13 +7,13 @@ localrules:
     write_config,
     write_software,
 
+wildcard_constraints:
+    heur="baseball-heur|dyn-heur|no-heur"
+
 rule run_epa_ng:
     input:
-        expand("results/epa-ng/{ref}/queries/{query}/{f}",
-            ref = config["epa-ng"]["ref"].keys(), query = config["epa-ng"]["query"].keys(),
-            f = ["software.txt", "config.yml"]),
-        expand("results/epa-ng/{ref}/queries/{query}.taxonomy.tsv",
-            ref = config["epa-ng"]["ref"].keys(), query = config["epa-ng"]["query"].keys())
+        expand("results/epa-ng/{ref}/queries/{query}/{heur}/taxonomy.tsv",
+            ref = config["epa-ng"]["ref"].keys(), query = config["epa-ng"]["query"].keys(), heur = config["epa-ng"]["heuristics"])
 
 rule nexus2newick:
     output:
@@ -158,18 +158,27 @@ rule raxml_evaluate:
         raxml-ng --redo --threads {threads} --evaluate --msa {input.msa} --tree {input.tree} --prefix {params.prefix} --model {params.model} >{log} 2>&1
         """
 
+def get_heuristic(wildcards):
+    if wildcards.heur == "no-heur":
+        return "--no-heur"
+    elif wildcards.heur == "dyn-heur":
+        return "--dyn-heur 0.99999"
+    elif wildcards.heur == "baseball-heur":
+        return "--baseball-heur"
+
 rule epa_ng:
     output:
-        "results/epa-ng/{ref}/queries/{query}/epa_result.jplace",
+        "results/epa-ng/{ref}/queries/{query}/{heur}/epa_result.jplace",
     input:
         qry=rules.split_aln.output.qry_msa,
         ref_msa=rules.split_aln.output.ref_msa,
         ref_tree=ref_tree,
         info=rules.raxml_evaluate.output,
     log:
-        "logs/epa-ng/{ref}/epa-ng.{query}.log",
+        "logs/epa-ng/{ref}/queries/{query}/{heur}/epa-ng.log",
     params:
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
+        heur=get_heuristic,
     envmodules:
         "bioinfo-tools",
         "EPA-ng/0.3.8"
@@ -180,7 +189,7 @@ rule epa_ng:
     shell:
         """
         epa-ng --redo -T {threads} --tree {input.ref_tree} --ref-msa {input.ref_msa} \
-            --query {input.qry} --out-dir {params.outdir} --model {input.info} >{log} 2>&1
+            --query {input.qry} --out-dir {params.outdir} {params.heur} --model {input.info} >{log} 2>&1
         """
 
 
@@ -199,12 +208,12 @@ def get_dist_ratio(config):
 
 rule gappa_assign:
     output:
-        "results/epa-ng/{ref}/queries/{query}/per_query.tsv",
+        "results/epa-ng/{ref}/queries/{query}/{heur}/per_query.tsv",
     input:
         json=rules.epa_ng.output,
         taxonfile=ref_taxonomy,
     log:
-        "logs/epa-ng/{ref}/gappa_assign.{query}.log",
+        "logs/epa-ng/{ref}/queries/{query}/{heur}/gappa_assign.log",
     params:
         ranks_string=lambda wildcards: "|".join(config["epa-ng"]["ref"][wildcards.ref]["tree_ranks"]),
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
@@ -231,14 +240,46 @@ rule gappa_assign:
 
 rule gappa2taxdf:
     output:
-        "results/epa-ng/{ref}/queries/{query}.taxonomy.tsv",
+        "results/epa-ng/{ref}/queries/{query}/{heur}.taxonomy.tsv",
     input:
         rules.gappa_assign.output[0],
     log:
-        "logs/epa-ng/{ref}/gappa2taxdf.{query}.log"
+        "logs/epa-ng/{ref}/queries/{query}/{heur}/gappa2taxdf.log"
     params:
         ranks=lambda wildcards: config["epa-ng"]["ref"][wildcards.ref]["tree_ranks"],
     shell:
         """
         python workflow/scripts/gappa2taxdf.py {input} {output} --ranks {params.ranks} >{log} 2>&1
+        """
+
+## plusplacer-taxtastic
+
+rule fasttree_info:
+    output:
+        info="results/plusplacer-taxtastic/{ref}/fasttree/info.txt",
+        tree="results/plusplacer-taxtastic/{ref}/fasttree/best-tree.nwk"
+    input:
+        ref_tree = lambda wildcards: config["plusplacer-taxtastic"]["ref"][wildcards.ref]["tree"],
+        ref_msa = lambda wildcards: config["plusplacer-taxtastic"]["ref"][wildcards.ref]["msa"],
+    log:
+        "logs/plusplacer-taxtastic/{ref}/fasttree/fasttree_info.log"
+    threads: 1
+    resources:
+        runtime = 60*24
+    conda: "../envs/plusplacer-taxtastic.yml"
+    shell:
+        """
+        FastTree -nosupport -gtr -gamma -nt -log {output.info} -intree {input.ref_tree} < {input.ref_msa} > {output.tree}
+        """
+
+rule pplacer_tax_SCAMPP:
+    output:
+        jplace="results/plusplacer-taxtastic/{ref}/queries/{query}/output.jplace"
+    input:
+        info=rules.fasttree_info.output.info,
+        alignment="results/epa-ng/{ref}/hmmalign/{query}/{ref}.{query}.fasta", # alignment with both queries and references
+        tree=rules.fasttree_info.output.tree,
+    shell:
+        """
+        python pplacer-tax-SCAMPP.py -i {input.info} -a {input.alignment} -t {input.tree} -o {output.jplace}
         """

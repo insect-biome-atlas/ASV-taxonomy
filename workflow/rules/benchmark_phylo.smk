@@ -161,20 +161,20 @@ rule sample_keep_order_remove_family_phylo:
 
 rule eval_all_epang:
     input:
-        expand("results/epa-ng/{ref}/queries/{query}/{query}.eval.tsv", 
-        ref=config["epa-ng"]["ref"].keys(), query=config["epa-ng"]["query"].keys()
+        expand("results/epa-ng/{ref}/queries/{query}/{query}.{heur}.eval.tsv", 
+        ref=config["epa-ng"]["ref"].keys(), query=config["epa-ng"]["query"].keys(), heur=config["epa-ng"]["heuristics"],
         ),
 
 rule evaluate_epang:
     output:
-        "results/epa-ng/{ref}/queries/{query}/{query}.eval.tsv"
+        "results/epa-ng/{ref}/queries/{query}/{query}.{heur}.eval.tsv"
     input:
-        res="results/epa-ng/{ref}/queries/{query}.taxonomy.tsv",
+        res="results/epa-ng/{ref}/queries/{query}.{heur}.taxonomy.tsv",
         tax=lambda wildcards: config["epa-ng"]["query"][wildcards.query].replace(".fasta", ".tsv"),
     log:
-        "results/epa-ng/{ref}/queries/{query}/epa-ng.eval.log"
+        "results/epa-ng/{ref}/queries/{query}/epa-ng.{heur}.eval.log"
     params:
-        classifier_str = "epa-ng",
+        classifier_str = lambda wildcards: "epa-ng"+"."+wildcards.heur,
     shell:
         """
         python workflow/scripts/evaluate_classifier.py {input.res} --taxonomy {input.tax} --classifier {params.classifier_str} --output {output} >{log} 2>&1
