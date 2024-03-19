@@ -173,7 +173,7 @@ rule epa_ng:
         qry=rules.split_aln.output.qry_msa,
         ref_msa=rules.split_aln.output.ref_msa,
         ref_tree=ref_tree,
-        info=rules.raxml_evaluate.output,
+        info=rules.raxml_evaluate.output
     log:
         "logs/epa-ng/{ref}/queries/{query}/{heur}/epa-ng.log",
     params:
@@ -192,6 +192,34 @@ rule epa_ng:
             --query {input.qry} --out-dir {params.outdir} {params.heur} --model {input.info} >{log} 2>&1
         """
 
+rule taxit_create:
+    output:
+        "results/pplacer/{ref}/taxit/refpkg/CONTENTS.json"
+    input:
+        ref_msa=ref_msa,
+        ref_tree=ref_tree,
+        info=rules.raxml_evaluate.output,
+    log:
+        "logs/taxit/{ref}/create.log"
+    params:
+        outdir=lambda wildcards, output: os.path.dirname(output[0]),
+    shell:
+        """
+        taxit create -l {wildcards.ref} -P {params.outdir} --aln-fasta {input.ref_msa} --tree-stats {input.info} -tree-file {input.ref_tree} 2> {log}
+        """
+
+rule pplacer:
+    output:
+        jplace="results/pplacer/{ref}/queries/{query}/{query}.jplace"
+    input:
+        repkg=rules.taxit_create.output[0],
+        msa=rules.hmm_align.output[0]
+    log:
+        "logs/pplacer/{ref}/{query}.log"
+    shell:
+        """
+        pplacer -c {input.refpkg} {input.msa} -o {output.jplace} --timing > {log} 2>&1
+        """
 
 def ref_taxonomy(wildcards):
     if config["epa-ng"]["ref"][wildcards.ref]["ref_taxonomy"]:
@@ -209,6 +237,8 @@ def get_dist_ratio(config):
 rule gappa_assign:
     output:
         "results/epa-ng/{ref}/queries/{query}/{heur}/per_query.tsv",
+        "results/epa-ng/{ref}/queries/{query}/{heur}/profile.tsv",
+        "results/epa-ng/{ref}/queries/{query}/{heur}/labelled_tree.newick",
     input:
         json=rules.epa_ng.output,
         taxonfile=ref_taxonomy,
@@ -240,7 +270,7 @@ rule gappa_assign:
 
 rule gappa2taxdf:
     output:
-        "results/epa-ng/{ref}/queries/{query}/{heur}.taxonomy.tsv",
+        "results/epa-ng/{ref}/queries/{query}/{heur}/taxonomy.tsv",
     input:
         rules.gappa_assign.output[0],
     log:
@@ -269,7 +299,7 @@ rule fasttree_info:
     conda: "../envs/plusplacer-taxtastic.yml"
     shell:
         """
-        FastTree -nosupport -gtr -gamma -nt -log {output.info} -intree {input.ref_tree} < {input.ref_msa} > {output.tree}
+        FastTree -nosupport -gtr -gamma -nt -log {output.info} -intree {input.ref_tree} < {input.ref_msa} > {output.tree} 2>{log}
         """
 
 rule pplacer_tax_SCAMPP:
@@ -278,8 +308,19 @@ rule pplacer_tax_SCAMPP:
     input:
         info=rules.fasttree_info.output.info,
         alignment="results/epa-ng/{ref}/hmmalign/{query}/{ref}.{query}.fasta", # alignment with both queries and references
+        ref_msa=ref_msa,
         tree=rules.fasttree_info.output.tree,
+    log:
+        "logs/plusplacer-taxtastic/{ref}/queries/{query}/pplacer_tax_SCAMPP.log"
+    params:
+        outdir = lambda wildcards, output: os.path.dirname(output.jplace),
+        outname = lambda wildcards, output: os.path.basename(output.jplace).replace(".jplace", ""),
+    shadow: "minimal"
+    threads: 1
+    resources:
+        runtime = 60*24
+    conda: "../envs/plusplacer-taxtastic.yml"
     shell:
         """
-        python pplacer-tax-SCAMPP.py -i {input.info} -a {input.alignment} -t {input.tree} -o {output.jplace}
+        pplacer-tax-SCAMPP -i {input.info} -d {params.outdir} -r {input.ref_msa} -a {input.alignment} -t {input.tree} -o {params.outname} >{log} 2>&1
         """
