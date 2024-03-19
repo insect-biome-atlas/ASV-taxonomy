@@ -161,18 +161,18 @@ rule sample_keep_order_remove_family_phylo:
 
 rule eval_all_epang:
     input:
-        expand("results/epa-ng/{ref}/queries/{query}/{query}.{heur}.eval.tsv", 
+        expand("results/epa-ng/{ref}/queries/{query}/{heur}/eval.tsv", 
         ref=config["epa-ng"]["ref"].keys(), query=config["epa-ng"]["query"].keys(), heur=config["epa-ng"]["heuristics"],
         ),
 
 rule evaluate_epang:
     output:
-        "results/epa-ng/{ref}/queries/{query}/{query}.{heur}.eval.tsv"
+        "results/epa-ng/{ref}/queries/{query}/{heur}/eval.tsv"
     input:
-        res="results/epa-ng/{ref}/queries/{query}.{heur}.taxonomy.tsv",
+        res="results/epa-ng/{ref}/queries/{query}/{heur}/taxonomy.tsv",
         tax=lambda wildcards: config["epa-ng"]["query"][wildcards.query].replace(".fasta", ".tsv"),
     log:
-        "results/epa-ng/{ref}/queries/{query}/epa-ng.{heur}.eval.log"
+        "logs/epa-ng/{ref}/queries/{query}/{heur}/eval.log"
     params:
         classifier_str = lambda wildcards: "epa-ng"+"."+wildcards.heur,
     shell:
