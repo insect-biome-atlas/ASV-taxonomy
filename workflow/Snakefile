@@ -21,7 +21,7 @@ except KeyError:
 
 #validate(config, "schema/config.schema.yaml", set_default=True)
 
-include: "rules/epang.smk"
+include: "rules/phylogeny.smk"
 include: "rules/metabuli.smk"
 include: "rules/sintax.smk"
 include: "rules/dada2.smk"
