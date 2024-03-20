@@ -5,8 +5,9 @@ localrules:
     sample_keep_genus_remove_species_phylo,
     sample_keep_family_remove_genus_phylo,
     sample_keep_order_remove_family_phylo,
-    evaluate_epang,
-    eval_all_epang
+    evaluate_phylo,
+    eval_all_epang,
+    eval_all_pplacer
 
 
 phylo_cases = ["case1-sample_keep_species_remove_identical_phylo",
@@ -161,20 +162,27 @@ rule sample_keep_order_remove_family_phylo:
 
 rule eval_all_epang:
     input:
-        expand("results/epa-ng/{ref}/queries/{query}/{heur}/eval.tsv", 
-        ref=config["epa-ng"]["ref"].keys(), query=config["epa-ng"]["query"].keys(), heur=config["epa-ng"]["heuristics"],
+        expand("results/epa-ng/{ref}/queries/{query}/raxml-ng/{heur}/eval.tsv", 
+        ref=config["phylogeny"]["ref"].keys(), query=config["phylogeny"]["query"].keys(), heur=config["phylogeny"]["epa-ng"]["heuristics"],
         ),
 
-rule evaluate_epang:
-    output:
-        "results/epa-ng/{ref}/queries/{query}/{heur}/eval.tsv"
+rule eval_all_pplacer:
     input:
-        res="results/epa-ng/{ref}/queries/{query}/{heur}/taxonomy.tsv",
-        tax=lambda wildcards: config["epa-ng"]["query"][wildcards.query].replace(".fasta", ".tsv"),
+        expand("results/pplacer/{ref}/queries/{query}/{phylotool}/{heur}/eval.tsv", 
+        ref=config["phylogeny"]["ref"].keys(), query=config["phylogeny"]["query"].keys(), heur=config["phylogeny"]["pplacer"]["heuristics"],
+        phylotool=config["phylogeny"]["pplacer"]["phylo-tools"]
+        ),
+
+rule evaluate_phylo:
+    output:
+        "results/{placer}/{ref}/queries/{query}/{phylotool}/{heur}/eval.tsv"
+    input:
+        res="results/{placer}/{ref}/queries/{query}/{phylotool}/{heur}/taxonomy.tsv",
+        tax=lambda wildcards: config["phylogeny"]["query"][wildcards.query].replace(".fasta", ".tsv"),
     log:
-        "logs/epa-ng/{ref}/queries/{query}/{heur}/eval.log"
+        "logs/{placer}/{ref}/queries/{query}/{phylotool}/{heur}/eval.log"
     params:
-        classifier_str = lambda wildcards: "epa-ng"+"."+wildcards.heur,
+        classifier_str = lambda wildcards: wildcards.placer+"."+wildcards.phylotool+"."+wildcards.heur,
     shell:
         """
         python workflow/scripts/evaluate_classifier.py {input.res} --taxonomy {input.tax} --classifier {params.classifier_str} --output {output} >{log} 2>&1

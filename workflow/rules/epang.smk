@@ -16,14 +16,17 @@ wildcard_constraints:
 
 def get_phylo_input(wildcards):
     input = []
-    for key in config["phylogeny"]["ref"].keys():
+    for ref in config["phylogeny"]["ref"].keys():
         for placement_tool in config["phylogeny"]["placement-tools"]:
             if placement_tool == "epa-ng":
-                for heur in config["phylogeny"]["epa-ng"]["heuristics"]:
+                phylo_tools = ["raxml-ng"]
+            else:
+                phylo_tools = config["phylogeny"]["pplacer"]["phylo-tools"]
+            for phylotool in phylo_tools:
+                for heur in config["phylogeny"][placement_tool]["heuristics"]:
                     for query in config["phylogeny"]["query"].keys():
-                        input.append(
-                            "results/epa-ng/{ref}/queries/{query}/raxml-ng/{heur}/epa_result.jplace"
-                        )
+                        input.append(f"results/{placement_tool}/{ref}/queries/{query}/{phylotool}/{heur}/taxonomy.tsv")
+    return input
 
 rule run_phylo:
     input:
@@ -200,7 +203,10 @@ rule fasttree_info:
     threads: 1
     resources:
         runtime = 60
-    conda: "../envs/fasttree.yml"
+    envmodules:
+        "bioinfo-tools",
+        "FastTree/2.1.11"
+    #conda: "../envs/fasttree.yml"
     shell:
         """
         FastTree -nosupport -gtr -gamma -nt -log {output.info} -intree {input.ref_tree} < {input.ref_msa} > {output.tree} 2>{log}
@@ -224,7 +230,7 @@ def get_info(wildcards):
 
 rule epa_ng:
     output:
-        "results/epa-ng/{ref}/queries/{query}/raxml-ng/{heur}/epa_result.jplace",
+        "results/epa-ng/{ref}/queries/{query}/raxml-ng/{heur}/epa-ng_result.jplace",
     input:
         qry=rules.split_aln.output.qry_msa,
         ref_msa=rules.split_aln.output.ref_msa,
@@ -255,18 +261,21 @@ rule taxit_create:
     Create refpkg for the tree with taxit, for later use with pplacer
     """
     output:
-        "results/pplacer/{ref}/taxit/{phylotool}/refpkg/CONTENTS.json"
+        "results/pplacer/{ref}/queries/{query}/taxit/{phylotool}/refpkg/CONTENTS.json"
     input:
         ref_msa=ref_msa,
         ref_tree=ref_tree,
         info=get_info,
     log:
-        "logs/taxit/{ref}/create.log"
+        "logs/taxit/{ref}/queries/{query}/{phylotool}/create.log"
     envmodules:
         "bioinfo-tools",
         "pplacer/1.1.alpha19"
     params:
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
+    resources:
+        runtime = 60,
+        mem_mb = mem_allowed,
     shell:
         """
         taxit create -l {wildcards.ref} -P {params.outdir} --aln-fasta {input.ref_msa} --tree-stats {input.info} -tree-file {input.ref_tree} 2> {log}
@@ -279,7 +288,7 @@ rule pplacer:
     output:
         jplace="results/pplacer/{ref}/queries/{query}/{phylotool}/{heur}/pplacer_result.jplace"
     input:
-        repkg=rules.taxit_create.output[0],
+        refpkg=rules.taxit_create.output[0],
         msa=rules.hmm_align.output[0]
     log:
         "logs/pplacer/{ref}/{query}/{phylotool}/{heur}.log"
@@ -288,9 +297,12 @@ rule pplacer:
         "pplacer/1.1.alpha19"
     params:
         max_strikes = lambda wildcards: 6 if wildcards.heur == "baseball" else 0
+    resources:
+        runtime=60*24*10,
+        mem_mb=mem_allowed,
     shell:
         """
-        pplacer -c {input.refpkg} {input.msa} -o {output.jplace} --timing --max-strikes {params.max_strikes} > {log } 2>&1
+        pplacer -c {input.refpkg} {input.msa} -o {output.jplace} --timing --max-strikes {params.max_strikes} > {log} 2>&1
         """
 
 ## gappa
@@ -306,7 +318,7 @@ def get_dist_ratio(config):
     if config["phylogeny"]["gappa"]["distribution_ratio"] == -1:
         return ""
     else:
-        return f"--distribution-ratio {config['phylogeny']|'gappa']['distribution_ratio']}"
+        return f"--distribution-ratio {config['phylogeny']['gappa']['distribution_ratio']}"
 
 rule gappa_assign:
     """
@@ -319,14 +331,14 @@ rule gappa_assign:
         "results/{placer}/{ref}/queries/{query}/{phylotool}/{heur}/profile.tsv",
         "results/{placer}/{ref}/queries/{query}/{phylotool}/{heur}/labelled_tree.newick",
     input:
-        jplace="results/{placer}/{ref}/queries/{query}/{heur}/{placer}_result.jplace",
+        jplace="results/{placer}/{ref}/queries/{query}/{phylotool}/{heur}/{placer}_result.jplace",
         taxonfile=ref_taxonomy,
     log:
         "logs/{placer}/{ref}/queries/{query}/{phylotool}/{heur}/gappa_assign.log",
     params:
-        ranks_string=lambda wildcards: "|".join(config["epa-ng"]["ref"][wildcards.ref]["tree_ranks"]),
+        ranks_string=lambda wildcards: "|".join(config["phylogeny"]["ref"][wildcards.ref]["tree_ranks"]),
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
-        consensus_thresh=config["epa-ng"]["gappa"]["consensus_thresh"],
+        consensus_thresh=config["phylogeny"]["gappa"]["consensus_thresh"],
         distribution_ratio=get_dist_ratio(config),
     conda:
         "../envs/gappa.yml"
@@ -349,11 +361,11 @@ rule gappa2taxdf:
     Convert gappa output to a taxonomic dataframe
     """
     output:
-        "results/{placer}/{ref}/queries/{query}/{heur}/taxonomy.tsv",
+        "results/{placer}/{ref}/queries/{query}/{phylotool}/{heur}/taxonomy.tsv",
     input:
         rules.gappa_assign.output[0],
     log:
-        "logs/{placer}/{ref}/queries/{query}/{heur}/gappa2taxdf.log"
+        "logs/{placer}/{ref}/queries/{query}/{phylotool}/{heur}/gappa2taxdf.log"
     params:
         ranks=lambda wildcards: config["phylogeny"]["ref"][wildcards.ref]["tree_ranks"],
     shell:
