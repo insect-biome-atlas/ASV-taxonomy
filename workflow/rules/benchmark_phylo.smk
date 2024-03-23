@@ -40,6 +40,8 @@ rule sample_keep_species_remove_identical_phylo:
         seed=42,
         outdir=lambda wildcards, output: os.path.dirname(output.test_tsv),
         ranks = lambda wildcards: config["benchmark_phylo"][wildcards.db]["ranks"],
+        db_filter_rank="phylum",
+        db_filter_taxa="Arthropoda"
     resources:
         runtime = 60,
         mem_mb = mem_allowed,
@@ -55,7 +57,7 @@ rule sample_keep_species_remove_identical_phylo:
             -k {params.k} \
             -s {params.seed} \
             --threads {threads} --ranks {params.ranks} \
-            --case 1 > {log} 2>&1
+            --case 1 --db_filter_rank {params.db_filter_rank} --db_filter_taxa {params.db_filter_taxa} > {log} 2>&1
         """
 
 rule sample_keep_genus_remove_species_phylo:
@@ -77,6 +79,8 @@ rule sample_keep_genus_remove_species_phylo:
         seed=42,
         outdir=lambda wildcards, output: os.path.dirname(output.test_tsv),
         ranks=lambda wildcards: config["benchmark_phylo"][wildcards.db]["ranks"],
+        db_filter_rank="phylum",
+        db_filter_taxa="Arthropoda",
     threads: 1
     shell:
         """
@@ -89,7 +93,8 @@ rule sample_keep_genus_remove_species_phylo:
             -k {params.k} \
             -s {params.seed} \
             --threads {threads} \
-            --case 2 --ranks {params.ranks} > {log} 2>&1
+            --case 2 --ranks {params.ranks} \
+            --db_filter_rank {params.db_filter_rank} --db_filter_taxa {params.db_filter_taxa} > {log} 2>&1
         """
 
 rule sample_keep_family_remove_genus_phylo:
@@ -111,6 +116,8 @@ rule sample_keep_family_remove_genus_phylo:
         seed=42,
         outdir=lambda wildcards, output: os.path.dirname(output.test_tsv),
         ranks=lambda wildcards: config["benchmark_phylo"][wildcards.db]["ranks"],
+        db_filter_rank="phylum",
+        db_filter_taxa="Arthropoda",
     threads: 1
     shell:
         """
@@ -123,7 +130,9 @@ rule sample_keep_family_remove_genus_phylo:
             -k {params.k} \
             -s {params.seed} \
             --threads {threads} \
-            --case 3 --ranks {params.ranks} > {log} 2>&1
+            --case 3 \
+            --db_filter_rank {params.db_filter_rank} --db_filter_taxa {params.db_filter_taxa} \
+            --ranks {params.ranks} > {log} 2>&1
         """
 
 rule sample_keep_order_remove_family_phylo:
@@ -145,6 +154,8 @@ rule sample_keep_order_remove_family_phylo:
         seed=42,
         outdir=lambda wildcards, output: os.path.dirname(output.test_tsv),
         ranks=lambda wildcards: config["benchmark_phylo"][wildcards.db]["ranks"],
+        db_filter_rank="phylum",
+        db_filter_taxa="Arthropoda",
     threads: 1
     shell:
         """
@@ -157,30 +168,31 @@ rule sample_keep_order_remove_family_phylo:
             -k {params.k} \
             -s {params.seed} \
             --threads {threads} \
-            --case 4 --ranks {params.ranks} > {log} 2>&1
+            --case 4 \
+            --db_filter_rank {params.db_filter_rank} --db_filter_taxa {params.db_filter_taxa} \
+            --ranks {params.ranks} > {log} 2>&1
         """
 
 rule eval_all_epang:
     input:
-        expand("results/epa-ng/{ref}/queries/{query}/raxml-ng/{heur}/eval.tsv", 
+        expand("results/epa-ng/{ref}/queries/{query}/{heur}/eval.tsv", 
         ref=config["phylogeny"]["ref"].keys(), query=config["phylogeny"]["query"].keys(), heur=config["phylogeny"]["epa-ng"]["heuristics"],
         ),
 
 rule eval_all_pplacer:
     input:
-        expand("results/pplacer/{ref}/queries/{query}/{phylotool}/{heur}/eval.tsv", 
+        expand("results/pplacer/{ref}/queries/{query}/{heur}/eval.tsv", 
         ref=config["phylogeny"]["ref"].keys(), query=config["phylogeny"]["query"].keys(), heur=config["phylogeny"]["pplacer"]["heuristics"],
-        phylotool=config["phylogeny"]["pplacer"]["phylo-tools"]
         ),
 
 rule evaluate_phylo:
     output:
-        "results/{placer}/{ref}/queries/{query}/{phylotool}/{heur}/eval.tsv"
+        "results/{placer}/{ref}/queries/{query}/{heur}/eval.tsv"
     input:
-        res="results/{placer}/{ref}/queries/{query}/{phylotool}/{heur}/taxonomy.tsv",
+        res="results/{placer}/{ref}/queries/{query}/{heur}/taxonomy.tsv",
         tax=lambda wildcards: config["phylogeny"]["query"][wildcards.query].replace(".fasta", ".tsv"),
     log:
-        "logs/{placer}/{ref}/queries/{query}/{phylotool}/{heur}/eval.log"
+        "logs/{placer}/{ref}/queries/{query}/{heur}/eval.log"
     params:
         classifier_str = lambda wildcards: wildcards.placer+"."+wildcards.phylotool+"."+wildcards.heur,
     shell:
