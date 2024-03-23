@@ -1,30 +1,21 @@
 benchmark:
-  coidb.221216.7lvl:
-    #fasta: "data/benchmark/bold_clustered.sintax.7levels.fasta"
-    fasta: "benchmark/coidb.221216.7lvl/subseqs.fasta"
-    taxonomy: "data/benchmark/coidb.221216.taxonomy.tsv.gz"
+  coidb.221216:
+    fasta: "data/coidb.221216/bold_clustered.subseqs.7lvl.fasta"
+    taxonomy: "data/coidb.221216/taxonomy.tsv"
     ranks: ["kingdom","phylum","class","order","family","genus","species"]
-    # should the reference sequences be trimmed to the region of interest?
-    extract_subseq: False
-    subseq_min_len: 300 # Minimum length of subsequence to be extracted from the reference
-    hmm_from: 78
-    hmm_to: 202
-    asv_seq: "AATAAATAACATAAGATTTTGATTATTACCCCCTTCTTTATCTTTACTATTAATTAGAAGAATAGTTGAAACTGGAACAGGTACCGGATGAACTGTTTACCCACCATTATCTTCTATTATTGCTCATACAGGATCATCAGTAGATTTTTCAATTTTTTCTTTACATATTGCAGGAATTTCATCTATTTTAGGAGCTATTAATTTTATTTCAACTATATTAAATATAAAAATCAAATTTTTAAAATTTGATCAAATTTCATTATTTATTTGATCAATTTTAATTACAACTGTATTATTACTTTTATCATTACCTGTATTAGCAGGAGCAATTACTATACTATTAACAGATCGAAATTTAAATACATCATTTTTTGATCCTATAGGAGGAGGAGATCCAATTCTTTATCAACATTTATTT"
     
 benchmark_phylo:
-  coidb.221216.7lvl:
-    #fasta: "data/benchmark/bold_clustered.sintax.7levels.fasta"
-    fasta: "benchmark/coidb.221216.7lvl/subseqs.fasta"
-    taxonomy: "data/benchmark/coidb.221216.taxonomy.tsv.gz"
+  coidb.221216:
+    fasta: "data/coidb.221216/bold_clustered.subseqs.7lvl.fasta"
+    taxonomy: "data/coidb.221216/taxonomy.tsv"
     tree_fasta: "data/chesters_2017/hmmersearch_OUT_ch2017_noduplic_trimmed.fas"
     tree_taxonomy: "data/chesters_2017/taxonomy.tsv"
     ranks: ["kingdom","phylum","class","order","family","genus","species"]
 
 tools:
-  - metabuli
-  - kaiju
+  - qiime2_sklearn
+  - qiime2_vsearch
   - sintax
-  #- epa-ng 
 
 metabuli:
   ref:
@@ -46,92 +37,92 @@ metabuli:
 sintax:
   ref:
     coidb.221216.7lvl.case1:
-      fasta: "benchmark/coidb.221216.7lvl/case1-keep-species-in-db/train.fasta"
+      fasta: "benchmark/coidb.221216/case1-keep-species-in-db/train.fasta"
       ranks: ["kingdom","phylum","class","order","family","genus","species"]
     coidb.221216.7lvl.case2: 
-      fasta: "benchmark/coidb.221216.7lvl/case2-keep-species-remove-identical/train.fasta"
+      fasta: "benchmark/coidb.221216/case2-keep-species-remove-identical/train.fasta"
       ranks: ["kingdom","phylum","class","order","family","genus","species"]
     coidb.221216.7lvl.case3: 
-      fasta: "benchmark/coidb.221216.7lvl/case3-remove-species-keep-genus/train.fasta"
+      fasta: "benchmark/coidb.221216/case3-remove-species-keep-genus/train.fasta"
       ranks: ["kingdom","phylum","class","order","family","genus","species"]
     coidb.221216.7lvl.case4: 
-      fasta: "benchmark/coidb.221216.7lvl/case4-remove-genus-keep-family/train.fasta"
+      fasta: "benchmark/coidb.221216/case4-remove-genus-keep-family/train.fasta"
       ranks: ["kingdom","phylum","class","order","family","genus","species"]
     coidb.221216.7lvl.case5: 
-      fasta: "benchmark/coidb.221216.7lvl/case5-remove-family/train.fasta"
+      fasta: "benchmark/coidb.221216/case5-remove-family/train.fasta"
       ranks: ["kingdom","phylum","class","order","family","genus","species"]
   query:
-    coidb.221216.7lvl.case1: "benchmark/coidb.221216.7lvl/case1-keep-species-in-db/test.fasta"
-    coidb.221216.7lvl.case2: "benchmark/coidb.221216.7lvl/case2-keep-species-remove-identical/test.fasta"
-    coidb.221216.7lvl.case3: "benchmark/coidb.221216.7lvl/case3-remove-species-keep-genus/test.fasta"
-    coidb.221216.7lvl.case4: "benchmark/coidb.221216.7lvl/case4-remove-genus-keep-family/test.fasta"
-    coidb.221216.7lvl.case5: "benchmark/coidb.221216.7lvl/case5-remove-family/test.fasta"
+    coidb.221216.7lvl.case1: "benchmark/coidb.221216/case1-keep-species-in-db/test.fasta"
+    coidb.221216.7lvl.case2: "benchmark/coidb.221216/case2-keep-species-remove-identical/test.fasta"
+    coidb.221216.7lvl.case3: "benchmark/coidb.221216/case3-remove-species-keep-genus/test.fasta"
+    coidb.221216.7lvl.case4: "benchmark/coidb.221216/case4-remove-genus-keep-family/test.fasta"
+    coidb.221216.7lvl.case5: "benchmark/coidb.221216/case5-remove-family/test.fasta"
   randseed: 15
   cutoff: 0.8
 
 dada2:
   ref:
     coidb.221216.7lvl.case1:
-      fasta: "benchmark/coidb.221216.7lvl/case1-keep-species-in-db/train.fasta"
+      fasta: "benchmark/coidb.221216/case1-keep-species-in-db/train.fasta"
       ranks: ["kingdom","phylum","class","order","family","genus"]
       format: "sintax"
     coidb.221216.7lvl.case2: 
-      fasta: "benchmark/coidb.221216.7lvl/case2-keep-species-remove-identical/train.fasta"
+      fasta: "benchmark/coidb.221216/case2-keep-species-remove-identical/train.fasta"
       ranks: ["kingdom","phylum","class","order","family","genus"]
       format: "sintax"
     coidb.221216.7lvl.case3: 
-      fasta: "benchmark/coidb.221216.7lvl/case3-remove-species-keep-genus/train.fasta"
+      fasta: "benchmark/coidb.221216/case3-remove-species-keep-genus/train.fasta"
       ranks: ["kingdom","phylum","class","order","family","genus"]
       format: "sintax"
     coidb.221216.7lvl.case4: 
-      fasta: "benchmark/coidb.221216.7lvl/case4-remove-genus-keep-family/train.fasta"
+      fasta: "benchmark/coidb.221216/case4-remove-genus-keep-family/train.fasta"
       ranks: ["kingdom","phylum","class","order","family","genus"]
       format: "sintax"
     coidb.221216.7lvl.case5: 
-      fasta: "benchmark/coidb.221216.7lvl/case5-remove-family/train.fasta"
+      fasta: "benchmark/coidb.221216/case5-remove-family/train.fasta"
       ranks: ["kingdom","phylum","class","order","family","genus"]
       format: "sintax"
   query:
-    coidb.221216.7lvl.case1: "benchmark/coidb.221216.7lvl/case1-keep-species-in-db/test.fasta"
-    coidb.221216.7lvl.case2: "benchmark/coidb.221216.7lvl/case2-keep-species-remove-identical/test.fasta"
-    coidb.221216.7lvl.case3: "benchmark/coidb.221216.7lvl/case3-remove-species-keep-genus/test.fasta"
-    coidb.221216.7lvl.case4: "benchmark/coidb.221216.7lvl/case4-remove-genus-keep-family/test.fasta"
-    coidb.221216.7lvl.case5: "benchmark/coidb.221216.7lvl/case5-remove-family/test.fasta"
+    coidb.221216.7lvl.case1: "benchmark/coidb.221216/case1-keep-species-in-db/test.fasta"
+    coidb.221216.7lvl.case2: "benchmark/coidb.221216/case2-keep-species-remove-identical/test.fasta"
+    coidb.221216.7lvl.case3: "benchmark/coidb.221216/case3-remove-species-keep-genus/test.fasta"
+    coidb.221216.7lvl.case4: "benchmark/coidb.221216/case4-remove-genus-keep-family/test.fasta"
+    coidb.221216.7lvl.case5: "benchmark/coidb.221216/case5-remove-family/test.fasta"
   minBoot: 80
 
 qiime2:
   ref:
     coidb.221216.7lvl.case1:
-      fasta: "benchmark/coidb.221216.7lvl/case1-keep-species-in-db/train.fasta"
-      taxonomy: "benchmark/coidb.221216.7lvl/case1-keep-species-in-db/train.tsv"
+      fasta: "benchmark/coidb.221216/case1-keep-species-in-db/train.fasta"
+      taxonomy: "benchmark/coidb.221216/case1-keep-species-in-db/train.tsv"
       ranks: ["kingdom","phylum","class","order","family","genus","species"]
       format: "sintax"
     coidb.221216.7lvl.case2: 
-      fasta: "benchmark/coidb.221216.7lvl/case2-keep-species-remove-identical/train.fasta"
-      taxonomy: "benchmark/coidb.221216.7lvl/case2-keep-species-remove-identical/train.tsv"
+      fasta: "benchmark/coidb.221216/case2-keep-species-remove-identical/train.fasta"
+      taxonomy: "benchmark/coidb.221216/case2-keep-species-remove-identical/train.tsv"
       ranks: ["kingdom","phylum","class","order","family","genus","species"]
       format: "sintax"
     coidb.221216.7lvl.case3: 
-      fasta: "benchmark/coidb.221216.7lvl/case3-remove-species-keep-genus/train.fasta"
-      taxonomy: "benchmark/coidb.221216.7lvl/case3-remove-species-keep-genus/train.tsv"
+      fasta: "benchmark/coidb.221216/case3-remove-species-keep-genus/train.fasta"
+      taxonomy: "benchmark/coidb.221216/case3-remove-species-keep-genus/train.tsv"
       ranks: ["kingdom","phylum","class","order","family","genus","species"]
       format: "sintax"
     coidb.221216.7lvl.case4: 
-      fasta: "benchmark/coidb.221216.7lvl/case4-remove-genus-keep-family/train.fasta"
-      taxonomy: "benchmark/coidb.221216.7lvl/case4-remove-genus-keep-family/train.tsv"
+      fasta: "benchmark/coidb.221216/case4-remove-genus-keep-family/train.fasta"
+      taxonomy: "benchmark/coidb.221216/case4-remove-genus-keep-family/train.tsv"
       ranks: ["kingdom","phylum","class","order","family","genus","species"]
       format: "sintax"
     coidb.221216.7lvl.case5: 
-      fasta: "benchmark/coidb.221216.7lvl/case5-remove-family/train.fasta"
-      taxonomy: "benchmark/coidb.221216.7lvl/case5-remove-family/train.tsv"
+      fasta: "benchmark/coidb.221216/case5-remove-family/train.fasta"
+      taxonomy: "benchmark/coidb.221216/case5-remove-family/train.tsv"
       ranks: ["kingdom","phylum","class","order","family","genus","species"]
       format: "sintax"
   query:
-    coidb.221216.7lvl.case1: "benchmark/coidb.221216.7lvl/case1-keep-species-in-db/test.fasta"
-    coidb.221216.7lvl.case2: "benchmark/coidb.221216.7lvl/case2-keep-species-remove-identical/test.fasta"
-    coidb.221216.7lvl.case3: "benchmark/coidb.221216.7lvl/case3-remove-species-keep-genus/test.fasta"
-    coidb.221216.7lvl.case4: "benchmark/coidb.221216.7lvl/case4-remove-genus-keep-family/test.fasta"
-    coidb.221216.7lvl.case5: "benchmark/coidb.221216.7lvl/case5-remove-family/test.fasta"
+    coidb.221216.7lvl.case1: "benchmark/coidb.221216/case1-keep-species-in-db/test.fasta"
+    coidb.221216.7lvl.case2: "benchmark/coidb.221216/case2-keep-species-remove-identical/test.fasta"
+    coidb.221216.7lvl.case3: "benchmark/coidb.221216/case3-remove-species-keep-genus/test.fasta"
+    coidb.221216.7lvl.case4: "benchmark/coidb.221216/case4-remove-genus-keep-family/test.fasta"
+    coidb.221216.7lvl.case5: "benchmark/coidb.221216/case5-remove-family/test.fasta"
 
 
 kaiju:
@@ -184,9 +175,6 @@ phylogeny:
     heuristics:
       - "baseball-heur"
       - "no-heur"
-    phylo-tools:
-      - "raxml-ng"
-      - "fasttree"
   gappa:
     # Ratio by which LWR is split between annotations if an edge has two possible
     # annotations. Specifies the amount going to the proximal annotation. If not
