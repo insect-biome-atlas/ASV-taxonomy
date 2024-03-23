@@ -12,13 +12,18 @@ from tqdm import tqdm
 from argparse import ArgumentParser
 from create_testdata import cluster_records
 
-def read_data(db_taxfile, tree_taxfile, db_fasta, tree_fasta):
+def read_data(db_taxfile, tree_taxfile, db_fasta, tree_fasta, db_filter_rank=None, db_filter_taxa=[]):
     """
     Reads the database taxonomy, tree taxonomy and fasta files and returns
     dataframes with sequences identified in the fasta files
     """
     sys.stderr.write(f"Reading {db_taxfile}\n")
     db_taxa = pd.read_csv(db_taxfile, sep="\t", header=0, index_col=0)
+    sys.stderr.write(f"Read {db_taxa.shape[0]} records\n")
+    if db_filter_rank is not None and len(db_filter_taxa)>0:
+        sys.stderr.write(f"Filtering database taxonomy for {db_filter_rank} in {','.join(db_filter_taxa)}\n")
+        db_taxa = db_taxa.loc[db_taxa[db_filter_rank].isin(db_filter_taxa)]
+        sys.stderr.write(f"Proceeding with {db_taxa.shape[0]} records\n")
     sys.stderr.write(f"Reading {tree_taxfile}\n")
     tree_taxa = pd.read_csv(tree_taxfile, sep="\t", header=None, index_col=0, names=["leaf","lineage"])
     db_seqs = {}
@@ -30,7 +35,7 @@ def read_data(db_taxfile, tree_taxfile, db_fasta, tree_fasta):
         seqid = (record.id).split(";")[0]
         record.seq = (record.seq).replace("-", "")
         tree_seqs[seqid] = record
-    db_taxa = db_taxa.loc[db_seqs.keys()]
+    db_taxa = db_taxa.loc[list(set(db_seqs.keys()).intersection(db_taxa.index))]
     sys.stderr.write(f"Proceeding with {db_taxa.shape[0]} records with sequences\n")
     sys.stderr.write(f"Removing sequences with ambiguous taxonomy\n")
     for r in ["family","genus","species"]:
@@ -55,13 +60,15 @@ def case1_sample_keep_species_remove_identical(args):
     db_fasta = args.input_db_fasta
     tree_fasta = args.input_tree_fasta
     db_taxfile = args.input_db_taxfile
+    db_filter_rank = args.db_filter_rank
+    db_filter_taxa = args.db_filter_taxa
     tree_taxfile = args.input_tree_taxfile
     ranks = args.ranks
     output_dir = args.output_dir
     k = args.k
     seed = args.seed
     threads = args.threads
-    db_taxa, tree_taxa, db_seqs, tree_seqs = read_data(db_taxfile, tree_taxfile, db_fasta, tree_fasta)
+    db_taxa, tree_taxa, db_seqs, tree_seqs = read_data(db_taxfile, tree_taxfile, db_fasta, tree_fasta, db_filter_rank, db_filter_taxa)
     tree_taxa = extract_ranks(tree_taxa, ranks)
     common_species = list(set(tree_taxa.species).intersection(db_taxa.species))
     sampled = []
@@ -116,12 +123,14 @@ def case2_sample_keep_genus_remove_species(args):
     db_fasta = args.input_db_fasta
     tree_fasta = args.input_tree_fasta
     db_taxfile = args.input_db_taxfile
+    db_filter_rank = args.db_filter_rank
+    db_filter_taxa = args.db_filter_taxa
     tree_taxfile = args.input_tree_taxfile
     output_dir = args.output_dir
     k = args.k
     seed = args.seed
     ranks = args.ranks
-    db_taxa, tree_taxa, db_seqs, tree_seqs = read_data(db_taxfile, tree_taxfile, db_fasta, tree_fasta)
+    db_taxa, tree_taxa, db_seqs, tree_seqs = read_data(db_taxfile, tree_taxfile, db_fasta, tree_fasta, db_filter_rank, db_filter_taxa)
     tree_taxa = extract_ranks(tree_taxa, ranks)
     # get list of genera present in both reference db and the tree
     common_genera = list(set(tree_taxa.genus).intersection(db_taxa.genus))
@@ -166,12 +175,14 @@ def case3_sample_keep_family_remove_genus(args):
     db_fasta = args.input_db_fasta
     tree_fasta = args.input_tree_fasta
     db_taxfile = args.input_db_taxfile
+    db_filter_rank = args.db_filter_rank
+    db_filter_taxa = args.db_filter_taxa
     tree_taxfile = args.input_tree_taxfile
     output_dir = args.output_dir
     k = args.k
     seed = args.seed
     ranks = args.ranks
-    db_taxa, tree_taxa, db_seqs, tree_seqs = read_data(db_taxfile, tree_taxfile, db_fasta, tree_fasta)
+    db_taxa, tree_taxa, db_seqs, tree_seqs = read_data(db_taxfile, tree_taxfile, db_fasta, tree_fasta, db_filter_rank, db_filter_taxa)
     tree_taxa = extract_ranks(tree_taxa, ranks)
     # get list of families present in both reference db and the tree
     common_families = list(set(tree_taxa.family).intersection(db_taxa.family))
@@ -233,12 +244,14 @@ def case4_sample_keep_order_remove_family(args):
     db_fasta = args.input_db_fasta
     tree_fasta = args.input_tree_fasta
     db_taxfile = args.input_db_taxfile
+    db_filter_rank = args.db_filter_rank
+    db_filter_taxa = args.db_filter_taxa
     tree_taxfile = args.input_tree_taxfile
     output_dir = args.output_dir
     k = args.k
     seed = args.seed
     ranks = args.ranks
-    db_taxa, tree_taxa, db_seqs, tree_seqs = read_data(db_taxfile, tree_taxfile, db_fasta, tree_fasta)
+    db_taxa, tree_taxa, db_seqs, tree_seqs = read_data(db_taxfile, tree_taxfile, db_fasta, tree_fasta, db_filter_rank, db_filter_taxa)
     tree_taxa = extract_ranks(tree_taxa, ranks)
     # get list of orders present in both reference db and the tree
     common_orders = list(set(tree_taxa["order"]).intersection(db_taxa["order"]))
@@ -325,5 +338,7 @@ if __name__ == "__main__":
     parser.add_argument("--case", type=str, default="lower", choices=["1", "2", "3", "4", "5"])
     parser.add_argument("--threads", type=int, default=1, help="Number of threads")
     parser.add_argument("--ranks", nargs="+", default=["kingdom","phylum","class","order","family","genus","species"])
+    parser.add_argument("--db_filter_rank", type=str, default=None, help="Rank to filter on (default: None)")
+    parser.add_argument("--db_filter_taxa", nargs="+", default=[], help="Taxa to filter on (default: [])")
     args = parser.parse_args()
     main(args)
