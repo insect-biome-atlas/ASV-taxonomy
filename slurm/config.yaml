@@ -9,3 +9,4 @@ jobs: 100
 default-resources: "slurm_account=naiss2023-5-209"
 latency-wait: 5
 executor: slurm
+rerun-incomplete: True

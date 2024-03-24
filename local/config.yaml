@@ -5,3 +5,4 @@ keep-going: True
 printshellcmds: True
 rerun-triggers: mtime
 cores: 1
+rerun-incomplete: True
