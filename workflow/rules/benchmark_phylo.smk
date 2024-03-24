@@ -194,7 +194,7 @@ rule evaluate_phylo:
     log:
         "logs/{placer}/{ref}/queries/{query}/{heur}/eval.log"
     params:
-        classifier_str = lambda wildcards: wildcards.placer+"."+wildcards.phylotool+"."+wildcards.heur,
+        classifier_str = lambda wildcards: wildcards.placer+"."+wildcards.heur,
     shell:
         """
         python workflow/scripts/evaluate_classifier.py {input.res} --taxonomy {input.tax} --classifier {params.classifier_str} --output {output} >{log} 2>&1
