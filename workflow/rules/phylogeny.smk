@@ -10,7 +10,6 @@ localrules:
 wildcard_constraints:
     heur="baseball-heur|dyn-heur|no-heur",
     placer="pplacer|epa-ng",
-    phylotool="raxml-ng|fasttree",
 
 ## target rules
 
@@ -18,14 +17,9 @@ def get_phylo_input(wildcards):
     input = []
     for ref in config["phylogeny"]["ref"].keys():
         for placement_tool in config["phylogeny"]["placement-tools"]:
-            if placement_tool == "epa-ng":
-                phylo_tools = ["raxml-ng"]
-            else:
-                phylo_tools = config["phylogeny"]["pplacer"]["phylo-tools"]
-            for phylotool in phylo_tools:
-                for heur in config["phylogeny"][placement_tool]["heuristics"]:
-                    for query in config["phylogeny"]["query"].keys():
-                        input.append(f"results/{placement_tool}/{ref}/queries/{query}/{phylotool}/{heur}/taxonomy.tsv")
+            for heur in config["phylogeny"][placement_tool]["heuristics"]:
+                for query in config["phylogeny"]["query"].keys():
+                    input.append(f"results/{placement_tool}/{ref}/queries/{query}/{heur}/taxonomy.tsv")
     return input
 
 rule run_phylo:
@@ -34,7 +28,7 @@ rule run_phylo:
 
 rule run_epa_ng:
     input:
-        expand("results/epa-ng/{ref}/queries/{query}/raxml-ng/{heur}/taxonomy.tsv",
+        expand("results/epa-ng/{ref}/queries/{query}/{heur}/taxonomy.tsv",
             ref = config["phylogeny"]["ref"].keys(), 
             query = config["phylogeny"]["query"].keys(), 
             heur = config["phylogeny"]["epa-ng"]["heuristics"]
@@ -42,11 +36,10 @@ rule run_epa_ng:
 
 rule run_pplacer:
     input:
-        expand("results/pplacer/{ref}/queries/{query}/{phylotool}/{heur}/taxonomy.tsv",
+        expand("results/pplacer/{ref}/queries/{query}/{heur}/taxonomy.tsv",
             ref = config["phylogeny"]["ref"].keys(), 
             query = config["phylogeny"]["query"].keys(), 
             heur = config["phylogeny"]["pplacer"]["heuristics"],
-            phylotool = config["phylogeny"]["pplacer"]["phylo-tools"]
             )
 
 rule nexus2newick:
@@ -140,13 +133,18 @@ rule hmm_align:
     resources:
         runtime=60*24*10,
         mem_mb=mem_allowed,
+    params:
+        tmpdir=lambda wildcards: "$TMPDIR/{wildcards.ref}.{wildcards.query}.raxml-ng",
     envmodules:
         "bioinfo-tools",
         "hmmer/3.3.2"
     threads: 4
     shell:
         """
-        hmmalign --trim --mapali {input.ref_msa} --outformat afa -o {output} {input.hmm} {input.qry} > {log} 2>&1
+        mkdir -p {params.tmpdir}
+        hmmalign --trim --mapali {input.ref_msa} --outformat afa -o {params.tmpdir}/output.msa {input.hmm} {input.qry} > {log} 2>&1
+        cut -f1 -d ' ' {params.tmpdir}/output.msa > {output[0]}
+        rm -r {params.tmpdir}
         """
 
 rule split_aln:
@@ -191,27 +189,6 @@ rule raxml_evaluate:
         raxml-ng --redo --threads {threads} --evaluate --msa {input.msa} --tree {input.tree} --prefix {params.prefix} --model {params.model} >{log} 2>&1
         """
 
-rule fasttree_info:
-    output:
-        info="results/phylogeny/{ref}/fasttree/info.txt",
-        tree="results/phylogeny/{ref}/fasttree/best-tree.nwk"
-    input:
-        ref_tree = lambda wildcards: config["phylogeny"]["ref"][wildcards.ref]["tree"],
-        ref_msa = lambda wildcards: config["phylogeny"]["ref"][wildcards.ref]["msa"],
-    log:
-        "logs/plusplacer-taxtastic/{ref}/fasttree/fasttree_info.log"
-    threads: 1
-    resources:
-        runtime = 60
-    envmodules:
-        "bioinfo-tools",
-        "FastTree/2.1.11"
-    #conda: "../envs/fasttree.yml"
-    shell:
-        """
-        FastTree -nosupport -gtr -gamma -nt -log {output.info} -intree {input.ref_tree} < {input.ref_msa} > {output.tree} 2>{log}
-        """
-
 ## epa-ng
 
 def get_heuristic(wildcards):
@@ -222,22 +199,16 @@ def get_heuristic(wildcards):
     elif wildcards.heur == "baseball-heur":
         return "--baseball-heur"
 
-def get_info(wildcards):
-    if wildcards.phylotool == "raxml-ng":
-        return rules.raxml_evaluate.output[0]
-    elif wildcards.phylotool == "fasttree":
-        return rules.fasttree_info.output[0]
-
 rule epa_ng:
     output:
-        "results/epa-ng/{ref}/queries/{query}/raxml-ng/{heur}/epa-ng_result.jplace",
+        "results/epa-ng/{ref}/queries/{query}/{heur}/epa-ng_result.jplace",
     input:
         qry=rules.split_aln.output.qry_msa,
         ref_msa=rules.split_aln.output.ref_msa,
         ref_tree=ref_tree,
         info=rules.raxml_evaluate.output[0],
     log:
-        "logs/epa-ng/{ref}/queries/{query}/raxml-ng/{heur}/epa-ng.log",
+        "logs/epa-ng/{ref}/queries/{query}/{heur}/epa-ng.log",
     params:
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
         heur=get_heuristic,
@@ -261,16 +232,17 @@ rule taxit_create:
     Create refpkg for the tree with taxit, for later use with pplacer
     """
     output:
-        "results/pplacer/{ref}/queries/{query}/taxit/{phylotool}/refpkg/CONTENTS.json"
+        "results/pplacer/{ref}/queries/{query}/taxit/refpkg/CONTENTS.json"
     input:
         ref_msa=ref_msa,
         ref_tree=ref_tree,
-        info=get_info,
+        info=rules.raxml_evaluate.output[0],
     log:
-        "logs/taxit/{ref}/queries/{query}/{phylotool}/create.log"
-    envmodules:
-        "bioinfo-tools",
-        "pplacer/1.1.alpha19"
+        "logs/taxit/{ref}/queries/{query}/create.log"
+    conda: "../envs/pplacer.yml"
+    #envmodules:
+    #    "bioinfo-tools",
+    #    "pplacer/1.1.alpha19"
     params:
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
     resources:
@@ -286,12 +258,12 @@ rule pplacer:
     Run pplacer on query sequences against reference tree
     """
     output:
-        jplace="results/pplacer/{ref}/queries/{query}/{phylotool}/{heur}/pplacer_result.jplace"
+        jplace="results/pplacer/{ref}/queries/{query}/{heur}/pplacer_result.jplace"
     input:
         refpkg=rules.taxit_create.output[0],
         msa=rules.hmm_align.output[0]
     log:
-        "logs/pplacer/{ref}/{query}/{phylotool}/{heur}.log"
+        "logs/pplacer/{ref}/{query}/{heur}.log"
     envmodules:
         "bioinfo-tools",
         "pplacer/1.1.alpha19"
@@ -323,18 +295,17 @@ def get_dist_ratio(config):
 rule gappa_assign:
     """
     Run gappa taxonomic assignment on placement file
-    Here {placer} is a wildcard that can be either 'pplacer' or 'epa-ng',
-    and {phylotool} can be either 'raxml-ng' or 'fasttree'.
+    Here {placer} is a wildcard that can be either 'pplacer' or 'epa-ng'
     """
     output:
-        "results/{placer}/{ref}/queries/{query}/{phylotool}/{heur}/per_query.tsv",
-        "results/{placer}/{ref}/queries/{query}/{phylotool}/{heur}/profile.tsv",
-        "results/{placer}/{ref}/queries/{query}/{phylotool}/{heur}/labelled_tree.newick",
+        "results/{placer}/{ref}/queries/{query}/{heur}/per_query.tsv",
+        "results/{placer}/{ref}/queries/{query}/{heur}/profile.tsv",
+        "results/{placer}/{ref}/queries/{query}/{heur}/labelled_tree.newick",
     input:
-        jplace="results/{placer}/{ref}/queries/{query}/{phylotool}/{heur}/{placer}_result.jplace",
+        jplace="results/{placer}/{ref}/queries/{query}/{heur}/{placer}_result.jplace",
         taxonfile=ref_taxonomy,
     log:
-        "logs/{placer}/{ref}/queries/{query}/{phylotool}/{heur}/gappa_assign.log",
+        "logs/{placer}/{ref}/queries/{query}/{heur}/gappa_assign.log",
     params:
         ranks_string=lambda wildcards: "|".join(config["phylogeny"]["ref"][wildcards.ref]["tree_ranks"]),
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
@@ -361,11 +332,11 @@ rule gappa2taxdf:
     Convert gappa output to a taxonomic dataframe
     """
     output:
-        "results/{placer}/{ref}/queries/{query}/{phylotool}/{heur}/taxonomy.tsv",
+        "results/{placer}/{ref}/queries/{query}/{heur}/taxonomy.tsv",
     input:
         rules.gappa_assign.output[0],
     log:
-        "logs/{placer}/{ref}/queries/{query}/{phylotool}/{heur}/gappa2taxdf.log"
+        "logs/{placer}/{ref}/queries/{query}/{heur}/gappa2taxdf.log"
     params:
         ranks=lambda wildcards: config["phylogeny"]["ref"][wildcards.ref]["tree_ranks"],
     shell:
