@@ -21,16 +21,23 @@ except KeyError:
 
 #validate(config, "schema/config.schema.yaml", set_default=True)
 
-include: "rules/phylogeny.smk"
-include: "rules/metabuli.smk"
-include: "rules/sintax.smk"
-include: "rules/dada2.smk"
-include: "rules/kaiju.smk"
-include: "rules/qiime2.smk"
+if "dada2" in config["tools"]:
+    include: "rules/dada2.smk"
+if "metabuli" in config["tools"]:
+    include: "rules/metabuli.smk"
+if "epa-ng" in config["tools"]:
+    include: "rules/phylogeny.smk"
+if "kaiju" in config["tools"]:
+    include: "rules/kaiju.smk"
+if "sintax" in config["tools"]:
+    include: "rules/sintax.smk"
+if "qiime2_sklearn" in config["tools"] or "qiime2_vsearch" in config["tools"]:
+    include: "rules/qiime2.smk"
 if "benchmark" in config.keys():
     include: "rules/benchmark.smk"
 if "benchmark_phylo" in config.keys():
     include: "rules/benchmark_phylo.smk"
+
 
 
 def all_input(wildcards):
