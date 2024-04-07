@@ -92,7 +92,7 @@ def case1_sample_keep_species_remove_identical(args):
         # records from the reference
         uc_hits = pd.DataFrame()
         for tree_sp_record in tree_sp_records:
-            clustered_records, _uc_hits = cluster_records([tree_sp_record]+db_sp_records, pid=1, threads=threads, usersort=True, clust_method="cluster_smallmem")
+            clustered_records, _uc_hits = cluster_records([tree_sp_record]+db_sp_records, pid=1, threads=threads, clust_method="cluster_fast")
             uc_hits = pd.concat([uc_hits, _uc_hits])
         # remove any db sequences that are identical to tree sequences
         db_sp_ids_to_remove_idx = uc_hits.loc[[x for x in tree_sp_ids if x in uc_hits.index], 8].values
