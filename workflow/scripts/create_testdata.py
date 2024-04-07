@@ -94,16 +94,22 @@ def sample_dereplicated(species, seqs, df, k=100, seed=42):
         if _derep == False and clusttable == False:
             sys.stderr.write(f"Error clustering {sp} ({len(records)} records)\n")
             continue
+        clusttable.columns = ["seqid"]
+        clusttable["seqid"] = [x.split(";")[0] for x in clusttable["seqid"]]
+        clusttable.rename(index=lambda x: x.split(";")[0], inplace=True)
         # sample 1 sequence from the dereplicated set of sequences
         random.seed(seed)
         _sampled = random.sample(_derep, 1)
         # add the sampled sequence to the ones to remove
         _to_remove = [_sampled[0].id]
         # remove any identical sequences from the database            
-        try:
-            _to_remove += clusttable.loc[_sampled[0].id].values
-        except KeyError:
-            pass
+        if clusttable.shape[0] > 0:
+            if _sampled[0].id in clusttable.index:
+                hits = clusttable.loc[_sampled[0].id, "seqid"]
+                if type(hits) == str:
+                    _to_remove.append(hits)
+                else:
+                    _to_remove += list(clusttable.loc[_sampled[0].id, "seqid"])
         # check that the species still exists after removing the sampled + identical seqs
         if df.loc[(~df.index.isin(_to_remove))&(df.species==sp)].shape[0] > 0:
             sampled.append(_sampled[0].id)
