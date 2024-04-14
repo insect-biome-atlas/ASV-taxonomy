@@ -1,6 +1,7 @@
 ## Phylogenetic datasets ##
 
 localrules:
+    sample_keep_species_phylo,
     sample_keep_species_remove_identical_phylo,
     sample_keep_genus_remove_species_phylo,
     sample_keep_family_remove_genus_phylo,
@@ -10,10 +11,11 @@ localrules:
     eval_all_pplacer
 
 
-phylo_cases = ["case1-sample_keep_species_remove_identical_phylo",
-               "case2-sample_keep_genus_remove_species_phylo",
-               "case3-sample_keep_family_remove_genus_phylo",
-               "case4-sample_keep_order_remove_family_phylo"]
+phylo_cases = ["case1-sample_keep_species_phylo",
+               "case2-sample_keep_species_remove_identical_phylo",
+               "case3-sample_keep_genus_remove_species_phylo",
+               "case4-sample_keep_family_remove_genus_phylo",
+               "case5-sample_keep_order_remove_family_phylo"]
 
 rule create_phylo_testdata:
     input:
@@ -21,27 +23,27 @@ rule create_phylo_testdata:
             db=config["benchmark_phylo"].keys(), 
             case=phylo_cases),
 
-rule sample_keep_species_remove_identical_phylo:
+rule sample_keep_species_phylo:
     """
-    Easy positive case: coidb sequences for which species, but not identical sequences, exist in tree [1]
+    Easy positive case: coidb sequences for which species exist in tree [1]
     """
     output:
-        test_fasta = "benchmark_phylo/{db}/case1-sample_keep_species_remove_identical_phylo/test.fasta",
-        test_tsv = "benchmark_phylo/{db}/case1-sample_keep_species_remove_identical_phylo/test.tsv",
+        test_fasta = "benchmark_phylo/{db}/case1-sample_keep_species_phylo/test.fasta",
+        test_tsv = "benchmark_phylo/{db}/case1-sample_keep_species_phylo/test.tsv",
     input:
         tree_fasta = lambda wildcards: config["benchmark_phylo"][wildcards.db]["tree_fasta"],
         db_fasta = lambda wildcards: config["benchmark_phylo"][wildcards.db]["fasta"],
         tree_taxonomy = lambda wildcards: config["benchmark_phylo"][wildcards.db]["tree_taxonomy"],
         db_taxonomy = lambda wildcards: config["benchmark_phylo"][wildcards.db]["taxonomy"],
     log:
-        "benchmark_phylo/{db}/case1-sample_keep_species_remove_identical_phylo/log.txt",
+        "benchmark_phylo/{db}/case1-sample_keep_species_phylo/log.txt",
     params:
         k = 100,
         seed=42,
         outdir=lambda wildcards, output: os.path.dirname(output.test_tsv),
         ranks = lambda wildcards: config["benchmark_phylo"][wildcards.db]["ranks"],
-        db_filter_rank="phylum",
-        db_filter_taxa="Arthropoda"
+        db_filter_rank="class",
+        db_filter_taxa="Insecta"
     resources:
         runtime = 60,
         mem_mb = mem_allowed,
@@ -60,27 +62,66 @@ rule sample_keep_species_remove_identical_phylo:
             --case 1 --db_filter_rank {params.db_filter_rank} --db_filter_taxa {params.db_filter_taxa} > {log} 2>&1
         """
 
-rule sample_keep_genus_remove_species_phylo:
+rule sample_keep_species_remove_identical_phylo:
     """
-    coidb sequences for which genus, but not species, exist in tree [2]
+    Easy positive case: coidb sequences for which species, but not identical sequences, exist in tree [2]
     """
     output:
-        test_fasta = "benchmark_phylo/{db}/case2-sample_keep_genus_remove_species_phylo/test.fasta",
-        test_tsv = "benchmark_phylo/{db}/case2-sample_keep_genus_remove_species_phylo/test.tsv",
+        test_fasta = "benchmark_phylo/{db}/case2-sample_keep_species_remove_identical_phylo/test.fasta",
+        test_tsv = "benchmark_phylo/{db}/case2-sample_keep_species_remove_identical_phylo/test.tsv",
     input:
         tree_fasta = lambda wildcards: config["benchmark_phylo"][wildcards.db]["tree_fasta"],
         db_fasta = lambda wildcards: config["benchmark_phylo"][wildcards.db]["fasta"],
         tree_taxonomy = lambda wildcards: config["benchmark_phylo"][wildcards.db]["tree_taxonomy"],
         db_taxonomy = lambda wildcards: config["benchmark_phylo"][wildcards.db]["taxonomy"],
     log:
-        "benchmark_phylo/{db}/case2-sample_keep_genus_remove_species_phylo/log.txt",
+        "benchmark_phylo/{db}/case2-sample_keep_species_remove_identical_phylo/log.txt",
+    params:
+        k = 100,
+        seed=42,
+        outdir=lambda wildcards, output: os.path.dirname(output.test_tsv),
+        ranks = lambda wildcards: config["benchmark_phylo"][wildcards.db]["ranks"],
+        db_filter_rank="class",
+        db_filter_taxa="Insecta"
+    resources:
+        runtime = 60,
+        mem_mb = mem_allowed,
+    threads: 2
+    shell:
+        """
+        python workflow/scripts/create_testdata_phylo.py \
+            --input_db_fasta {input.db_fasta} \
+            --input_tree_fasta {input.tree_fasta} \
+            --input_tree_taxfile {input.tree_taxonomy} \
+            --input_db_taxfile {input.db_taxonomy} \
+            --output_dir {params.outdir} \
+            -k {params.k} \
+            -s {params.seed} \
+            --threads {threads} --ranks {params.ranks} \
+            --case 2 --db_filter_rank {params.db_filter_rank} --db_filter_taxa {params.db_filter_taxa} > {log} 2>&1
+        """
+
+rule sample_keep_genus_remove_species_phylo:
+    """
+    coidb sequences for which genus, but not species, exist in tree [3]
+    """
+    output:
+        test_fasta = "benchmark_phylo/{db}/case3-sample_keep_genus_remove_species_phylo/test.fasta",
+        test_tsv = "benchmark_phylo/{db}/case3-sample_keep_genus_remove_species_phylo/test.tsv",
+    input:
+        tree_fasta = lambda wildcards: config["benchmark_phylo"][wildcards.db]["tree_fasta"],
+        db_fasta = lambda wildcards: config["benchmark_phylo"][wildcards.db]["fasta"],
+        tree_taxonomy = lambda wildcards: config["benchmark_phylo"][wildcards.db]["tree_taxonomy"],
+        db_taxonomy = lambda wildcards: config["benchmark_phylo"][wildcards.db]["taxonomy"],
+    log:
+        "benchmark_phylo/{db}/case3-sample_keep_genus_remove_species_phylo/log.txt",
     params:
         k=100,
         seed=42,
         outdir=lambda wildcards, output: os.path.dirname(output.test_tsv),
         ranks=lambda wildcards: config["benchmark_phylo"][wildcards.db]["ranks"],
-        db_filter_rank="phylum",
-        db_filter_taxa="Arthropoda",
+        db_filter_rank="class",
+        db_filter_taxa="Insecta",
     threads: 1
     shell:
         """
@@ -93,69 +134,31 @@ rule sample_keep_genus_remove_species_phylo:
             -k {params.k} \
             -s {params.seed} \
             --threads {threads} \
-            --case 2 --ranks {params.ranks} \
+            --case 3 --ranks {params.ranks} \
             --db_filter_rank {params.db_filter_rank} --db_filter_taxa {params.db_filter_taxa} > {log} 2>&1
         """
 
 rule sample_keep_family_remove_genus_phylo:
     """
-    coidb sequences for which family, but not genus, exist in tree [3]
+    coidb sequences for which family, but not genus, exist in tree [4]
     """
     output:
-        test_fasta = "benchmark_phylo/{db}/case3-sample_keep_family_remove_genus_phylo/test.fasta",
-        test_tsv = "benchmark_phylo/{db}/case3-sample_keep_family_remove_genus_phylo/test.tsv",
+        test_fasta = "benchmark_phylo/{db}/case4-sample_keep_family_remove_genus_phylo/test.fasta",
+        test_tsv = "benchmark_phylo/{db}/case4-sample_keep_family_remove_genus_phylo/test.tsv",
     input:
         tree_fasta = lambda wildcards: config["benchmark_phylo"][wildcards.db]["tree_fasta"],
         db_fasta = lambda wildcards: config["benchmark_phylo"][wildcards.db]["fasta"],
         tree_taxonomy = lambda wildcards: config["benchmark_phylo"][wildcards.db]["tree_taxonomy"],
         db_taxonomy = lambda wildcards: config["benchmark_phylo"][wildcards.db]["taxonomy"],
     log:
-        "benchmark_phylo/{db}/case3-sample_keep_family_remove_genus_phylo/log.txt",
+        "benchmark_phylo/{db}/case4-sample_keep_family_remove_genus_phylo/log.txt",
     params:
         k=100,
         seed=42,
         outdir=lambda wildcards, output: os.path.dirname(output.test_tsv),
         ranks=lambda wildcards: config["benchmark_phylo"][wildcards.db]["ranks"],
-        db_filter_rank="phylum",
-        db_filter_taxa="Arthropoda",
-    threads: 1
-    shell:
-        """
-        python workflow/scripts/create_testdata_phylo.py \
-            --input_db_fasta {input.db_fasta} \
-            --input_tree_fasta {input.tree_fasta} \
-            --input_tree_taxfile {input.tree_taxonomy} \
-            --input_db_taxfile {input.db_taxonomy} \
-            --output_dir {params.outdir} \
-            -k {params.k} \
-            -s {params.seed} \
-            --threads {threads} \
-            --case 3 \
-            --db_filter_rank {params.db_filter_rank} --db_filter_taxa {params.db_filter_taxa} \
-            --ranks {params.ranks} > {log} 2>&1
-        """
-
-rule sample_keep_order_remove_family_phylo:
-    """
-    coidb sequences for which order, but not family, exist in tree [4]
-    """
-    output:
-        test_fasta = "benchmark_phylo/{db}/case4-sample_keep_order_remove_family_phylo/test.fasta",
-        test_tsv = "benchmark_phylo/{db}/case4-sample_keep_order_remove_family_phylo/test.tsv",
-    input:
-        tree_fasta = lambda wildcards: config["benchmark_phylo"][wildcards.db]["tree_fasta"],
-        db_fasta = lambda wildcards: config["benchmark_phylo"][wildcards.db]["fasta"],
-        tree_taxonomy = lambda wildcards: config["benchmark_phylo"][wildcards.db]["tree_taxonomy"],
-        db_taxonomy = lambda wildcards: config["benchmark_phylo"][wildcards.db]["taxonomy"],
-    log:
-        "benchmark_phylo/{db}/case4-sample_keep_order_remove_family_phylo/log.txt",
-    params:
-        k=100,
-        seed=42,
-        outdir=lambda wildcards, output: os.path.dirname(output.test_tsv),
-        ranks=lambda wildcards: config["benchmark_phylo"][wildcards.db]["ranks"],
-        db_filter_rank="phylum",
-        db_filter_taxa="Arthropoda",
+        db_filter_rank="class",
+        db_filter_taxa="Insecta",
     threads: 1
     shell:
         """
@@ -169,6 +172,44 @@ rule sample_keep_order_remove_family_phylo:
             -s {params.seed} \
             --threads {threads} \
             --case 4 \
+            --db_filter_rank {params.db_filter_rank} --db_filter_taxa {params.db_filter_taxa} \
+            --ranks {params.ranks} > {log} 2>&1
+        """
+
+rule sample_keep_order_remove_family_phylo:
+    """
+    coidb sequences for which order, but not family, exist in tree [5]
+    """
+    output:
+        test_fasta = "benchmark_phylo/{db}/case5-sample_keep_order_remove_family_phylo/test.fasta",
+        test_tsv = "benchmark_phylo/{db}/case5-sample_keep_order_remove_family_phylo/test.tsv",
+    input:
+        tree_fasta = lambda wildcards: config["benchmark_phylo"][wildcards.db]["tree_fasta"],
+        db_fasta = lambda wildcards: config["benchmark_phylo"][wildcards.db]["fasta"],
+        tree_taxonomy = lambda wildcards: config["benchmark_phylo"][wildcards.db]["tree_taxonomy"],
+        db_taxonomy = lambda wildcards: config["benchmark_phylo"][wildcards.db]["taxonomy"],
+    log:
+        "benchmark_phylo/{db}/case5-sample_keep_order_remove_family_phylo/log.txt",
+    params:
+        k=100,
+        seed=42,
+        outdir=lambda wildcards, output: os.path.dirname(output.test_tsv),
+        ranks=lambda wildcards: config["benchmark_phylo"][wildcards.db]["ranks"],
+        db_filter_rank="class",
+        db_filter_taxa="Insecta",
+    threads: 1
+    shell:
+        """
+        python workflow/scripts/create_testdata_phylo.py \
+            --input_db_fasta {input.db_fasta} \
+            --input_tree_fasta {input.tree_fasta} \
+            --input_tree_taxfile {input.tree_taxonomy} \
+            --input_db_taxfile {input.db_taxonomy} \
+            --output_dir {params.outdir} \
+            -k {params.k} \
+            -s {params.seed} \
+            --threads {threads} \
+            --case 5 \
             --db_filter_rank {params.db_filter_rank} --db_filter_taxa {params.db_filter_taxa} \
             --ranks {params.ranks} > {log} 2>&1
         """
