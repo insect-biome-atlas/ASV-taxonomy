@@ -134,7 +134,7 @@ rule hmm_align:
         runtime=60*24*10,
         mem_mb=mem_allowed,
     params:
-        tmpdir=lambda wildcards: "$TMPDIR/{wildcards.ref}.{wildcards.query}.raxml-ng",
+        tmpdir=lambda wildcards: f"$TMPDIR/{wildcards.ref}.{wildcards.query}.raxml-ng",
     envmodules:
         "bioinfo-tools",
         "hmmer/3.3.2"
@@ -223,6 +223,7 @@ rule epa_ng:
         """
         epa-ng --redo -T {threads} --tree {input.ref_tree} --ref-msa {input.ref_msa} \
             --query {input.qry} --out-dir {params.outdir} {params.heur} --model {input.info} >{log} 2>&1
+        mv {params.outdir}/epa_result.jplace {output[0]}
         """
 
 ## pplacer
