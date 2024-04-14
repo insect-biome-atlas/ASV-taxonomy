@@ -21,6 +21,8 @@ except KeyError:
 
 #validate(config, "schema/config.schema.yaml", set_default=True)
 
+if "sintax" in config["tools"]:
+    include: "rules/sintax.smk"
 if "dada2" in config["tools"]:
     include: "rules/dada2.smk"
 if "metabuli" in config["tools"]:
@@ -29,8 +31,6 @@ if "epa-ng" in config["tools"]:
     include: "rules/phylogeny.smk"
 if "kaiju" in config["tools"]:
     include: "rules/kaiju.smk"
-if "sintax" in config["tools"]:
-    include: "rules/sintax.smk"
 if "qiime2_sklearn" in config["tools"] or "qiime2_vsearch" in config["tools"]:
     include: "rules/qiime2.smk"
 if "benchmark" in config.keys():
