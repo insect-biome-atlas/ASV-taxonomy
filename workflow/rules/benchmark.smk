@@ -229,7 +229,8 @@ def get_dada2_benchmark(wildcards):
     for key in config["benchmark"].keys():
         for case in cases:
             short = f"{key}.{case.split('-')[0]}"
-            input.append(f"results/dada2/{short}/queries/{short}/dada2.tsv")
+            input += expand("results/dada2/{short}/queries/{short}/dada2.minBoot{boot}.tsv",
+                        boot=config["dada2"]["minBoot"], short=short)
     return input
 
 rule benchmark_dada2:
@@ -241,7 +242,8 @@ def get_all_dada2_eval(wildcards):
     for key in config["benchmark"].keys():
         for case in cases:
             short = f"{key}.{case.split('-')[0]}"
-            input.append(f"results/dada2/{short}/queries/{short}/dada2.eval.tsv")
+            input +=expand("results/dada2/{short}/queries/{short}/dada2.minBoot{boot}.eval.tsv",
+                        boot=config["dada2"]["minBoot"], short=short)
     return input
 
 rule eval_all_dada2:
@@ -253,14 +255,14 @@ rule evaluate_dada2:
     Evaluate the performance of DADA2
     """
     output:
-        "results/dada2/{ref}/queries/{query}/dada2.eval.tsv"
+        "results/dada2/{ref}/queries/{query}/dada2.minBoot{boot}.eval.tsv"
     input:
-        res="results/dada2/{ref}/queries/{query}/dada2.tsv",
+        res="results/dada2/{ref}/queries/{query}/dada2.minBoot{boot}.tsv",
         tax=lambda wildcards: config["dada2"]["query"][wildcards.query].replace(".fasta", ".tsv"),
     log:
-        "results/dada2/{ref}/queries/{query}/dada2.eval.log"
+        "results/dada2/{ref}/queries/{query}/dada2.eval.minBoot{boot}.log"
     params:
-        classifier_str = f"dada2.minBoot{config['dada2']['minBoot']}"
+        classifier_str = lambda wildcards: f"dada2.minBoot{wildcards.boot}"
     shell:
         """
         python workflow/scripts/evaluate_classifier.py {input.res} --taxonomy {input.tax} --classifier {params.classifier_str} --output {output} >{log} 2>&1
