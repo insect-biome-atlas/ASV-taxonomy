@@ -9,22 +9,9 @@ localrules:
 
 wildcard_constraints:
     heur="baseball-heur|dyn-heur|no-heur",
-    placer="pplacer|epa-ng",
+    placer="epa-ng",
 
 ## target rules
-
-def get_phylo_input(wildcards):
-    input = []
-    for ref in config["phylogeny"]["ref"].keys():
-        for placement_tool in config["phylogeny"]["placement-tools"]:
-            for heur in config["phylogeny"][placement_tool]["heuristics"]:
-                for query in config["phylogeny"]["query"].keys():
-                    input.append(f"results/{placement_tool}/{ref}/queries/{query}/{heur}/taxonomy.tsv")
-    return input
-
-rule run_phylo:
-    input:
-        get_phylo_input,
 
 rule run_epa_ng:
     input:
@@ -32,14 +19,6 @@ rule run_epa_ng:
             ref = config["phylogeny"]["ref"].keys(), 
             query = config["phylogeny"]["query"].keys(), 
             heur = config["phylogeny"]["epa-ng"]["heuristics"]
-            )
-
-rule run_pplacer:
-    input:
-        expand("results/pplacer/{ref}/queries/{query}/{heur}/taxonomy.tsv",
-            ref = config["phylogeny"]["ref"].keys(), 
-            query = config["phylogeny"]["query"].keys(), 
-            heur = config["phylogeny"]["pplacer"]["heuristics"],
             )
 
 rule nexus2newick:
@@ -226,58 +205,6 @@ rule epa_ng:
         mv {params.outdir}/epa_result.jplace {output[0]}
         """
 
-## pplacer
-
-rule taxit_create:
-    """
-    Create refpkg for the tree with taxit, for later use with pplacer
-    """
-    output:
-        "results/pplacer/{ref}/queries/{query}/taxit/refpkg/CONTENTS.json"
-    input:
-        ref_msa=ref_msa,
-        ref_tree=ref_tree,
-        info=rules.raxml_evaluate.output[0],
-    log:
-        "logs/taxit/{ref}/queries/{query}/create.log"
-    conda: "../envs/pplacer.yml"
-    #envmodules:
-    #    "bioinfo-tools",
-    #    "pplacer/1.1.alpha19"
-    params:
-        outdir=lambda wildcards, output: os.path.dirname(output[0]),
-    resources:
-        runtime = 60,
-        mem_mb = mem_allowed,
-    shell:
-        """
-        taxit create -l {wildcards.ref} -P {params.outdir} --aln-fasta {input.ref_msa} --tree-stats {input.info} -tree-file {input.ref_tree} 2> {log}
-        """
-
-rule pplacer:
-    """
-    Run pplacer on query sequences against reference tree
-    """
-    output:
-        jplace="results/pplacer/{ref}/queries/{query}/{heur}/pplacer_result.jplace"
-    input:
-        refpkg=rules.taxit_create.output[0],
-        msa=rules.hmm_align.output[0]
-    log:
-        "logs/pplacer/{ref}/{query}/{heur}.log"
-    envmodules:
-        "bioinfo-tools",
-        "pplacer/1.1.alpha19"
-    params:
-        max_strikes = lambda wildcards: 6 if wildcards.heur == "baseball" else 0
-    resources:
-        runtime=60*24*10,
-        mem_mb=mem_allowed,
-    shell:
-        """
-        pplacer -c {input.refpkg} {input.msa} -o {output.jplace} --timing --max-strikes {params.max_strikes} > {log} 2>&1
-        """
-
 ## gappa
 
 def ref_taxonomy(wildcards):
@@ -296,7 +223,6 @@ def get_dist_ratio(config):
 rule gappa_assign:
     """
     Run gappa taxonomic assignment on placement file
-    Here {placer} is a wildcard that can be either 'pplacer' or 'epa-ng'
     """
     output:
         "results/{placer}/{ref}/queries/{query}/{heur}/per_query.tsv",
