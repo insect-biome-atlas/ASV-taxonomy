@@ -20,7 +20,7 @@ rule sintax:
         cutoff=config["sintax"]["cutoff"]
     conda: "../envs/vsearch.yml"
     resources:
-        runtime = 60 * 10,
+        runtime = 60 * 24 * 10,
         constraint="mem256GB"
     threads: 20
     shell:
@@ -40,5 +40,5 @@ rule parse_sintax:
         ranks=lambda wildcards: config["sintax"]["ref"][wildcards.ref]["ranks"]
     shell:
         """
-        python {params.src} -i {input} -o {output} > {log} 2>&1
+        python {params.src} -i {input} -o {output} -r {params.ranks} > {log} 2>&1
         """    
