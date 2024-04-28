@@ -52,7 +52,7 @@ if "benchmark" in config.keys():
     include: "rules/benchmark.smk"
 if "benchmark_phylo" in config.keys():
     include: "rules/benchmark_phylo.smk"
-
+include: "rules/reassign.smk"
 
 
 def all_input(wildcards):

@@ -28,6 +28,7 @@ def epa_ng_input(wildcards):
                     new_query = f"{sintax_query}.reassigned"
                     for heur in config["phylogeny"]["epa-ng"]["heuristics"]:
                         input.append(f"results/epa-ng/{ref}/queries/{new_query}/{heur}/taxonomy.tsv")
+                        input.append(f"results/reassign/{sintax_ref}/queries/{sintax_query}/reassign/{ref}/{heur}/taxonomy.tsv")
     return input
 
 rule run_epa_ng:
