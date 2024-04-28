@@ -1,6 +1,7 @@
 localrules:
     parse_sintax,
-    run_sintax
+    run_sintax,
+    extract_ASVs
 
 rule run_sintax:
     input: 
@@ -41,4 +42,37 @@ rule parse_sintax:
     shell:
         """
         python {params.src} -i {input} -o {output} -r {params.ranks} > {log} 2>&1
-        """    
+        """
+
+rule extract_ASVs:
+    """
+    Extract ASVs matching reassign_rank == reassign_taxa but unclassified at child rank.
+    For example, ASVs classified as reassign_taxa == 'Insecta' at reassign_rank == 'Class' but unclassified at 'Order'.
+    """
+    output:
+        tsv="results/sintax/{ref}/queries/{query}/reassign/{rank}/unclassified.{taxa}.tsv",
+        fasta="results/sintax/{ref}/queries/{query}/reassign/{rank}/unclassified.{taxa}.fasta"
+    input:
+        tsv=rules.parse_sintax.output[0],
+        qry=lambda wildcards: config["sintax"]["query"][wildcards.query]
+    params:
+        reassign_rank = lambda wildcards: wildcards.rank,
+        reassign_taxa = lambda wildcards: wildcards.taxa,
+    run:
+        reassign_taxa = params.reassign_taxa
+        reassign_rank = params.reassign_rank
+        from Bio.SeqIO import parse, write as write_fasta
+        import pandas as pd
+        df = pd.read_csv(input.tsv, sep="\t", index_col=0)
+        cols = df.columns.tolist()
+        child_rank = cols[cols.index(reassign_rank)+1]
+        taxdf = df.loc[df[child_rank]==f"unclassified.{reassign_taxa}"]
+        seqs = []
+        for record in parse(input.qry, "fasta"):
+            if record.id in taxdf.index:
+                seqs.append(record)
+        with open(output.fasta, "w") as f:
+            write_fasta(seqs, f, "fasta")
+        taxdf.to_csv(output.tsv, sep="\t")
+
+    

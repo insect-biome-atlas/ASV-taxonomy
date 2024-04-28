@@ -13,13 +13,26 @@ wildcard_constraints:
 
 ## target rules
 
+def epa_ng_input(wildcards):
+    input = []
+    for ref in config["phylogeny"]["ref"].keys():
+        if "query" in config["phylogeny"].keys():
+            for query in config["phylogeny"]["query"].keys():
+                for heur in config["phylogeny"]["epa-ng"]["heuristics"]:
+                    input.append(f"results/epa-ng/{ref}/queries/{query}/{heur}/taxonomy.tsv")
+        if "reassign_sintax" in config["phylogeny"]["ref"][ref].keys():
+            rank = config["phylogeny"]["ref"][ref]["reassign_sintax"]["rank"]
+            taxa = config["phylogeny"]["ref"][ref]["reassign_sintax"]["taxa"]
+            for sintax_ref in config["sintax"]["ref"].keys():
+                for sintax_query in config["sintax"]["query"].keys():
+                    new_query = f"{sintax_query}.reassigned"
+                    for heur in config["phylogeny"]["epa-ng"]["heuristics"]:
+                        input.append(f"results/epa-ng/{ref}/queries/{new_query}/{heur}/taxonomy.tsv")
+    return input
+
 rule run_epa_ng:
     input:
-        expand("results/epa-ng/{ref}/queries/{query}/{heur}/taxonomy.tsv",
-            ref = config["phylogeny"]["ref"].keys(), 
-            query = config["phylogeny"]["query"].keys(), 
-            heur = config["phylogeny"]["epa-ng"]["heuristics"]
-            )
+        epa_ng_input,
 
 rule nexus2newick:
     output:
@@ -225,14 +238,14 @@ rule gappa_assign:
     Run gappa taxonomic assignment on placement file
     """
     output:
-        "results/{placer}/{ref}/queries/{query}/{heur}/per_query.tsv",
-        "results/{placer}/{ref}/queries/{query}/{heur}/profile.tsv",
-        "results/{placer}/{ref}/queries/{query}/{heur}/labelled_tree.newick",
+        "results/epa-ng/{ref}/queries/{query}/{heur}/per_query.tsv",
+        "results/epa-ng/{ref}/queries/{query}/{heur}/profile.tsv",
+        "results/epa-ng/{ref}/queries/{query}/{heur}/labelled_tree.newick",
     input:
-        jplace="results/{placer}/{ref}/queries/{query}/{heur}/{placer}_result.jplace",
+        jplace="results/epa-ng/{ref}/queries/{query}/{heur}/epa-ng_result.jplace",
         taxonfile=ref_taxonomy,
     log:
-        "logs/{placer}/{ref}/queries/{query}/{heur}/gappa_assign.log",
+        "logs/epa-ng/{ref}/queries/{query}/{heur}/gappa_assign.log",
     params:
         ranks_string=lambda wildcards: "|".join(config["phylogeny"]["ref"][wildcards.ref]["tree_ranks"]),
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
@@ -259,11 +272,11 @@ rule gappa2taxdf:
     Convert gappa output to a taxonomic dataframe
     """
     output:
-        "results/{placer}/{ref}/queries/{query}/{heur}/taxonomy.tsv",
+        "results/epa-ng/{ref}/queries/{query}/{heur}/taxonomy.tsv",
     input:
         rules.gappa_assign.output[0],
     log:
-        "logs/{placer}/{ref}/queries/{query}/{heur}/gappa2taxdf.log"
+        "logs/epa-ng/{ref}/queries/{query}/{heur}/gappa2taxdf.log"
     params:
         ranks=lambda wildcards: config["phylogeny"]["ref"][wildcards.ref]["tree_ranks"],
     shell:

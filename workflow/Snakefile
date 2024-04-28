@@ -21,6 +21,21 @@ except KeyError:
 
 #validate(config, "schema/config.schema.yaml", set_default=True)
 
+def update_config(config):
+    for ref in config["phylogeny"]["ref"].keys():
+        if "reassign_sintax" in config["phylogeny"]["ref"][ref].keys():
+            rank = config["phylogeny"]["ref"][ref]["reassign_sintax"]["rank"]
+            taxa = config["phylogeny"]["ref"][ref]["reassign_sintax"]["taxa"]
+            for sintax_ref in config["sintax"]["ref"].keys():
+                for sintax_query in config["sintax"]["query"].keys():
+                    new_query = f"{sintax_query}.reassigned"
+                    try:
+                        config["phylogeny"]["query"][new_query] = f"results/sintax/{sintax_ref}/queries/{sintax_query}/reassign/{rank}/unclassified.{taxa}.fasta"
+                    except KeyError:
+                        config["phylogeny"]["query"] = {new_query: f"results/sintax/{sintax_ref}/queries/{sintax_query}/reassign/{rank}/unclassified.{taxa}.fasta"}
+    return config
+
+config = update_config(config)
 if "sintax" in config["tools"]:
     include: "rules/sintax.smk"
 if "dada2" in config["tools"]:
@@ -44,8 +59,8 @@ def all_input(wildcards):
     input = []
     if "metabuli" in config["tools"]:
         input+=rules.run_metabuli.input
-    if "epa-ng" in config["tools"]:
-        input+=rules.run_epa_ng.input
+    #if "epa-ng" in config["tools"]:
+    #    input+=rules.run_epa_ng.input
     if "kaiju" in config["tools"]:
         input+=rules.run_kaiju.input
     if "sintax" in config["tools"]:
@@ -54,7 +69,8 @@ def all_input(wildcards):
 
 rule all:
     input:
-        all_input
+        all_input,
+        epa_ng_input
 
 rule write_config:
     output:
