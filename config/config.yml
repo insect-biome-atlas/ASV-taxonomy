@@ -1,38 +1,37 @@
-benchmark:
-  coidb.221216:
-    fasta: "data/benchmark/bold_clustered.sintax.fasta"
-    taxonomy: "data/benchmark/coidb.221216.taxonomy.tsv.gz"
-    ranks: ["kingdom","phylum","class","order","family","genus","species","bold_bin"]
-    
-
 tools:
-  - metabuli
-  - kaiju
   - sintax
-  #- epa-ng 
+  - epa-ng 
+  #- metabuli
+  #- kaiju
+  #- dada2
+  #- qiime2_sklearn
+  #- qiime2_vsearch
 
 dada2:
   ref:
-    coi.test: 
-      fasta: "data/coi.subsample.fasta"
-      fmt: "sintax"
+    test: 
+      fasta: ""
+      fmt: "dada2"
       ranks: ["kingdom","phylum","class","order","family","genus","species"]
   query:
-    coi.test: "data/coi.subsample.fasta"
+    test: "data/test/test.fasta"
 
 qiime2:
   ref:
-    coi.test:
-      fasta: "data/coi.subsample.fasta"
-      taxonomy: "data/benchmark/coidb.221216.taxonomy.tsv.gz"
-      fmt: "sintax"
+    test:
+      fasta: ""
+      taxonomy: ""
+      fmt: ""
       ranks: ["kingdom","phylum","class","order","family","genus","species"]
+  query:
+    test: "data/test/test.fasta"
+
 
 metabuli:
   ref:
-    coi.test: "data/coi.subsample.fasta"
+    test: ""
   query: 
-    coi.test_query: "data/coi.subsample.fasta"
+    test: "data/test/test.fasta"
   runs:
     default:
       options: ""
@@ -47,44 +46,63 @@ metabuli:
 
 sintax:
   ref:
-    coi.test: 
-      fasta: "data/coi.subsample.fasta"
+    test: 
+      fasta: ""
+      ranks: ["kingdom","phylum","class","order","family","genus","species"]
   query:
-    coi.test_query: "data/coi.subsample.fasta"
+    test: "data/test/test.fasta"
   randseed: 15
   cutoff: 0.8  
 
 kaiju:
   ref:
-    coi.test: "data/coi.subsample.fasta"
+    test: ""
   query:
-    coi.test_query: "data/coi.subsample.fasta"
+    test: "data/test/test.fasta"
   settings: ""
     
-epa-ng:
+phylogeny:
   # Set input options
   ref:
-    lep_backbone:
-      tree: "data/backbone.nex"
-      tree_format: "nexus"
-      msa: "data/lep_backbone_aln.nex"
-      msa_format: "nexus"
-      tree_ranks: ["order","family","genus","species"]
-      ref_taxonomy: ""
-      model: "GTR+F+I+I+R10"
+    chester_2017:
+      tree: "data/chesters_2017/chesters_2017_trimmed_tree.nwk"
+      tree_format: "newick"
+      msa: "data/chesters_2017/hmmersearch_OUT_ch2017_noduplic_trimmed.refmt.fas"
+      msa_format: "fasta"
+      tree_ranks:
+        - "Kingdom"
+        - "Phylum"
+        - "Class"
+        - "Order"
+        - "Family"
+        - "Genus"
+        - "Species"
+      ref_taxonomy: "data/chesters_2017/taxonomy.tsv"
+      model: "GTR+G+F"
+      # Use this reference to reassign sintax queries that are
+      # assigned to 'rank' below (Class by default) with taxlabel 
+      # 'taxa' (Insecta) by default. This means that sequences
+      # with Class == Insecta but unclassified at rank 'Order'
+      # will be extracted and reassigned with EPA-NG
+      reassign_sintax:
+        rank: "Class"
+        taxa: "Insecta"
+        update_ranks: ["Order"]
+        downstream_ranks: ["Family","Genus","Species","BOLD_bin"]
   query: 
-    lep: "data/lep.fasta"
-  # preplacement heuristics to test
-  # dyn-heur: default, this is the accumulated threshold method where branches are added to the set 
-  # of candidates until the sum of their LWR exceed a user specified threshold. The default setting is 
-  # 0.99999, corresponding to a covered likelihood weight of 99.999%.
-  # baseball-heur: works identically to the baseball heuristic from pplacer, with default settings 
-  # (--strike-box 3.0, --max-strikes 6, --max-pitches 40)
-  # no-heur: disables preplacement heuristics
-  heuristics:
-    - "dyn-heur"
-    - "baseball-heur"
-    - "no-heur"
+    test: "data/test/test.fasta"
+  epa-ng:
+    # preplacement heuristics to test
+    # dyn-heur: default, this is the accumulated threshold method where branches are added to the set 
+    # of candidates until the sum of their LWR exceed a user specified threshold. The default setting is 
+    # 0.99999, corresponding to a covered likelihood weight of 99.999%.
+    # baseball-heur: works identically to the baseball heuristic from pplacer, with default settings 
+    # (--strike-box 3.0, --max-strikes 6, --max-pitches 40)
+    # no-heur: disables preplacement heuristics
+    heuristics:
+      #- "dyn-heur"
+      - "baseball-heur"
+      #- "no-heur"
   gappa:
     # Ratio by which LWR is split between annotations if an edge has two possible
     # annotations. Specifies the amount going to the proximal annotation. If not
