@@ -1,6 +1,7 @@
 localrules:
     parse_sintax,
     run_sintax,
+    collate_sintax,
     extract_ASVs
 
 rule run_sintax:
@@ -8,20 +9,46 @@ rule run_sintax:
         expand("results/sintax/{ref}/queries/{query}/sintax.tsv",
             ref=config["sintax"]["ref"].keys(), query=config["sintax"]["query"].keys())
 
-rule sintax:
+splits=[f'split{x:03d}' for x in list(range(1,1001))]
+
+rule split_sintax_input:
+    """
+    Splits the sintax fasta file into 1000 chunks
+    """
     output:
-        "results/sintax/{ref}/queries/{query}/sintax.tab"
+        expand("results/sintax/{{ref}}/queries/{{query}}/splits/{split}.fasta", split=splits)
     input:
-        db=lambda wildcards: config["sintax"]["ref"][wildcards.ref]["fasta"],
         qry=lambda wildcards: config["sintax"]["query"][wildcards.query]
     log:
-        "logs/sintax/sintax.{ref}.{query}.log"
+        "logs/sintax/sintax.{ref}.{query}.split.log"
+    params:
+        outdir=lambda wildcards, output: os.path.dirname(output[0]),
+        splits=len(splits),
+    resources:
+        runtime = 60,
+    threads: 2
+    shell:
+        """
+        cat {input.qry} | seqkit split2 -O {params.outdir} -j {threads} -p {params.splits} --by-part-prefix split >{log} 2>&1
+        """
+
+rule sintax:
+    """
+    Runs sintax on one split of the query fasta file
+    """
+    output:
+        "results/sintax/{ref}/queries/{query}/splits/{split}.tab"
+    input:
+        db=lambda wildcards: config["sintax"]["ref"][wildcards.ref]["fasta"],
+        qry="results/sintax/{ref}/queries/{query}/splits/{split}.fasta"
+    log:
+        "logs/sintax/splits/sintax.{ref}.{query}.{split}.log"
     params:
         seed=config["sintax"]["randseed"],
         cutoff=config["sintax"]["cutoff"]
     conda: "../envs/vsearch.yml"
     resources:
-        runtime = 60 * 24 * 10,
+        runtime = 30,
         constraint="mem256GB"
     threads: 20
     shell:
@@ -29,11 +56,27 @@ rule sintax:
         vsearch --sintax {input.qry} --sintax_cutoff {params.cutoff} --randseed {params.seed} --db {input.db} --tabbedout {output} --threads 1 >{log} 2>&1
         """
 
+rule collate_sintax:
+    """
+    Concatenates the sintax output files into a single file
+    """
+    output:
+        "results/sintax/{ref}/queries/{query}/sintax.tab"
+    input:
+        expand("results/sintax/{{ref}}/queries/{{query}}/splits/{split}.tab", split=splits),
+    shell:
+        """
+        cat {input} > {output}
+        """
+
 rule parse_sintax:
+    """
+    Parses the sintax output file into a tsv file
+    """
     output:
         "results/sintax/{ref}/queries/{query}/sintax.tsv"
     input:
-        rules.sintax.output
+        rules.collate_sintax.output
     log:
         "logs/sintax/parse_sintax.{ref}.{query}.log"
     params:
@@ -74,5 +117,3 @@ rule extract_ASVs:
         with open(output.fasta, "w") as f:
             write_fasta(seqs, f, "fasta")
         taxdf.to_csv(output.tsv, sep="\t")
-
-    
