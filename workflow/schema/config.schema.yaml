@@ -9,8 +9,8 @@ properties:
     type: array
     description: "List of tools to run"
     items:
-      enum: ["metabuli", "sintax", "epa-ng", "kaiju"]
-    default: ["sintax"]
+      enum: ["metabuli", "sintax", "epa-ng", "kaiju", "qiime2_sklearn", "qiime2_vsearch"]
+    default: ["sintax", "epa-ng"]
   metabuli:
     type: object
     properties:
