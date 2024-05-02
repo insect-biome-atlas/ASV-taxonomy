@@ -124,7 +124,7 @@ rule hmm_align:
     log:
         "logs/phylogeny/{ref}/hmmalign.{query}.log",
     resources:
-        runtime=60*24*10,
+        runtime=60*24,
         mem_mb=mem_allowed,
     params:
         tmpdir=lambda wildcards: f"$TMPDIR/{wildcards.ref}.{wildcards.query}.raxml-ng",
