@@ -16,7 +16,7 @@ rule split_sintax_input:
     Splits the sintax fasta file into 1000 chunks
     """
     output:
-        expand("results/sintax/{{ref}}/queries/{{query}}/splits/{split}.fasta", split=splits)
+        temp(expand("results/sintax/{{ref}}/queries/{{query}}/splits/{split}.fasta", split=splits))
     input:
         qry=lambda wildcards: config["sintax"]["query"][wildcards.query]
     log:
@@ -37,7 +37,7 @@ rule sintax:
     Runs sintax on one split of the query fasta file
     """
     output:
-        "results/sintax/{ref}/queries/{query}/splits/{split}.tab"
+        temp("results/sintax/{ref}/queries/{query}/splits/{split}.tab")
     input:
         db=lambda wildcards: config["sintax"]["ref"][wildcards.ref]["fasta"],
         qry="results/sintax/{ref}/queries/{query}/splits/{split}.fasta"
