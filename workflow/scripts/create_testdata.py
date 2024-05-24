@@ -12,7 +12,7 @@ import tqdm
 from argparse import ArgumentParser
 
 
-def cluster_records(records, pid, threads, clust_method="cluster_fast", usersort=False):
+def cluster_records(records, pid, threads, clust_method="cluster_fast"):
     """
     Takes a list of sequence records, writes to a temporary file and
     clusters them with vsearch.
@@ -21,10 +21,6 @@ def cluster_records(records, pid, threads, clust_method="cluster_fast", usersort
     :param pid: Percent id to cluster by
     :return:
     """
-    if usersort:
-        extra = "--usersort"
-    else:
-        extra = ""
     clustered_records = []
     uc_res = {}
     if len(records) == 1:
@@ -37,12 +33,10 @@ def cluster_records(records, pid, threads, clust_method="cluster_fast", usersort
     cons_out = NamedTemporaryFile(mode="w", delete=False)
     uc_out = NamedTemporaryFile(mode="w", delete=False)
     # Run vsearch on tempfile
-    subprocess.call(
-        [
+    cmd = [
             "vsearch",
             f"--{clust_method}",
             f.name,
-            extra,
             "--id",
             str(pid),
             "--consout",
@@ -52,7 +46,9 @@ def cluster_records(records, pid, threads, clust_method="cluster_fast", usersort
             "--notrunclabels",
             "--threads",
             str(threads),
-        ],
+        ]
+    subprocess.call(
+        cmd,
         stdout=f_null,
         stderr=f_null,
     )
@@ -63,12 +59,18 @@ def cluster_records(records, pid, threads, clust_method="cluster_fast", usersort
         clustered_records.append(record)
     cons_out.close()
     # Read file with cluster output
-    uc_res = pd.read_csv(uc_out.name, sep="\t", header=None)
+    try:
+        uc_res = pd.read_csv(uc_out.name, sep="\t", header=None)
+    except:
+        return False, False
     uc_out.close()
     # Only keep hits and create dataframe mapping cluster reps to clustered seqs
     uc_hits = uc_res.loc[uc_res[0]=="H", [8,9]].set_index(9).rename(index = lambda x: x.split(" ")[0])
     uc_hits[8] = [x.split(" ")[0] for x in uc_hits[8]]
     f.close()
+    os.remove(f.name)
+    os.remove(uc_out.name)
+    os.remove(cons_out.name)
     return clustered_records, uc_hits
 
 def read_fasta(fasta):
@@ -89,16 +91,25 @@ def sample_dereplicated(species, seqs, df, k=100, seed=42):
         records = [seqs[x] for x in df.loc[df.species==sp].index.tolist()]
         # dereplicate the sequences so that derep_species_seqs[sp] only has unique sequences
         _derep, clusttable = cluster_records(records, 1.0, 1)
+        if _derep == False and clusttable == False:
+            sys.stderr.write(f"Error clustering {sp} ({len(records)} records)\n")
+            continue
+        clusttable.columns = ["seqid"]
+        clusttable["seqid"] = [x.split(";")[0] for x in clusttable["seqid"]]
+        clusttable.rename(index=lambda x: x.split(";")[0], inplace=True)
         # sample 1 sequence from the dereplicated set of sequences
         random.seed(seed)
         _sampled = random.sample(_derep, 1)
         # add the sampled sequence to the ones to remove
         _to_remove = [_sampled[0].id]
         # remove any identical sequences from the database            
-        try:
-            _to_remove += clusttable.loc[_sampled[0].id].values
-        except KeyError:
-            pass
+        if clusttable.shape[0] > 0:
+            if _sampled[0].id in clusttable.index:
+                hits = clusttable.loc[_sampled[0].id, "seqid"]
+                if type(hits) == str:
+                    _to_remove.append(hits)
+                else:
+                    _to_remove += list(clusttable.loc[_sampled[0].id, "seqid"])
         # check that the species still exists after removing the sampled + identical seqs
         if df.loc[(~df.index.isin(_to_remove))&(df.species==sp)].shape[0] > 0:
             sampled.append(_sampled[0].id)

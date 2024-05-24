@@ -1,3 +1,5 @@
+# Taxonomic assignment tools for Insect Biome Atlas
+=======
 # Taxonomic annotations workflow
 
 ## Overview

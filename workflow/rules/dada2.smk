@@ -1,9 +1,13 @@
+wildcard_constraints:
+    boot="[0-9]+",
+
 localrules:
     sintax2dada2,
 
 rule run_dada2:
     input:
-        expand("results/dada2/{ref}/queries/{query}/dada2.tsv", ref=config["dada2"]["ref"], query=config["dada2"]["query"])
+        expand("results/dada2/{ref}/queries/{query}/dada2.minBoot{boot}.tsv", 
+                ref=config["dada2"]["ref"], query=config["dada2"]["query"], boot = config["dada2"]["minBoot"])
         
 rule sintax2dada2:
     """
@@ -18,10 +22,11 @@ rule sintax2dada2:
     run:
         from Bio.SeqIO import parse
         import re
+        ranks = [x.lower() for x in params.ranks]
         with open(input.fasta, 'r') as fhin, open(output.fasta, 'w') as fhout:
             for record in parse(fhin, "fasta"):
-                desc = ";".join((record.description).split("=")[-1].split(",")[0:len(params.ranks)])
-                desc = re.sub('[a-z]:', '', desc + ";")
+                desc = ";".join((record.description).split("=")[-1].split(",")[0:len(ranks)])
+                desc = re.sub('[a-z]:', '', desc+";")
                 fhout.write(f">{desc}\n{str(record.seq)}\n")
 
 def get_dada2_ref(wildcards):
@@ -32,15 +37,16 @@ def get_dada2_ref(wildcards):
 
 rule dada2:
     output:
-        "results/dada2/{ref}/queries/{query}/dada2.tsv"
+        "results/dada2/{ref}/queries/{query}/dada2.minBoot{boot}.tsv"
     input:
         ref=get_dada2_ref,
         qry=lambda wildcards: config["dada2"]["query"][wildcards.query]
+    log:
+        "results/dada2/{ref}/queries/{query}/dada2.minBoot{boot}.log"
     params:
         taxLevels = lambda wildcards: config["dada2"]["ref"][wildcards.ref]["ranks"],
-        seed = 42,
-        minBoot = config["dada2"]["minBoot"],
-    threads: 20
+        seed = 100,
+    threads: 10
     conda:
         "../envs/dada2.yml"
     resources:
@@ -50,5 +56,3 @@ rule dada2:
     #    "docker://quay.io/biocontainers/bioconductor-dada2:1.30.0--r43hf17093f_0"
     script:
         "../scripts/dada2.R"
-
-    

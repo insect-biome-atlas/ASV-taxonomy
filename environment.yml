@@ -14,5 +14,6 @@ dependencies:
   - vsearch
   - tqdm
   - pip
+  - seqkit
   - pip:
-    - snakemake-executor-plugin-slurm
+    - snakemake-executor-plugin-slurm==0.3.0

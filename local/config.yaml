@@ -1,5 +1,8 @@
-use-conda: true
-reason: true
-keep-going: true
+use-conda: True
+use-envmodules: True
+use-apptainer: True
+keep-going: True
+printshellcmds: True
 rerun-triggers: mtime
 cores: 1
+rerun-incomplete: True

@@ -3,6 +3,7 @@
 results
 logs
 benchmark
+benchmark_phylo
 data
 envs
 raxml-ng

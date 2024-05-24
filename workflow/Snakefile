@@ -21,56 +21,56 @@ except KeyError:
 
 #validate(config, "schema/config.schema.yaml", set_default=True)
 
-include: "rules/epang.smk"
-include: "rules/metabuli.smk"
-include: "rules/sintax.smk"
-include: "rules/dada2.smk"
-include: "rules/kaiju.smk"
-include: "rules/qiime2.smk"
+def update_config(config):
+    for ref in config["phylogeny"]["ref"].keys():
+        if "reassign_sintax" in config["phylogeny"]["ref"][ref].keys():
+            rank = config["phylogeny"]["ref"][ref]["reassign_sintax"]["rank"]
+            taxa = config["phylogeny"]["ref"][ref]["reassign_sintax"]["taxa"]
+            for sintax_ref in config["sintax"]["ref"].keys():
+                for sintax_query in config["sintax"]["query"].keys():
+                    new_query = f"{sintax_query}.reassigned"
+                    try:
+                        config["phylogeny"]["query"][new_query] = f"results/sintax/{sintax_ref}/queries/{sintax_query}/reassign/{rank}/unclassified.{taxa}.fasta"
+                    except KeyError:
+                        config["phylogeny"]["query"] = {new_query: f"results/sintax/{sintax_ref}/queries/{sintax_query}/reassign/{rank}/unclassified.{taxa}.fasta"}
+    return config
+
+config = update_config(config)
+if "sintax" in config["tools"]:
+    include: "rules/sintax.smk"
+if "dada2" in config["tools"]:
+    include: "rules/dada2.smk"
+if "metabuli" in config["tools"]:
+    include: "rules/metabuli.smk"
+if "epa-ng" in config["tools"]:
+    include: "rules/phylogeny.smk"
+if "kaiju" in config["tools"]:
+    include: "rules/kaiju.smk"
+if "qiime2_sklearn" in config["tools"] or "qiime2_vsearch" in config["tools"]:
+    include: "rules/qiime2.smk"
 if "benchmark" in config.keys():
     include: "rules/benchmark.smk"
 if "benchmark_phylo" in config.keys():
     include: "rules/benchmark_phylo.smk"
+include: "rules/reassign.smk"
 
 
 def all_input(wildcards):
     input = []
     if "metabuli" in config["tools"]:
         input+=rules.run_metabuli.input
-        #input += expand("results/metabuli/{ref}/classify/{run}/{query}_{f}.tsv", 
-        #    ref=config["metabuli"]["ref"].keys(), 
-        #    run=config["metabuli"]["runs"].keys(),
-        #    query=config["metabuli"]["query"].keys(),
-        #    f=["classifications","report"])
-    if "epa-ng" in config["tools"]:
-        input+=rules.run_epa_ng.input
-        #input+=expand(
-        #    "results/taxonomy/{ref}/{run}/taxonomy.tsv",
-        #    run=config["run"],
-        #    ref=ref_name,
-        #)
-        #input+=expand(
-        #    "results/taxonomy/{ref}/{run}/config.yml", run=config["run"], ref=ref_name
-        #)
-        #input+=expand(
-        #    "results/taxonomy/{ref}/{run}/software.txt",
-        #    run=config["run"],
-        #    ref=ref_name,
-        #)
+    #if "epa-ng" in config["tools"]:
+    #    input+=rules.run_epa_ng.input
     if "kaiju" in config["tools"]:
         input+=rules.run_kaiju.input
     if "sintax" in config["tools"]:
         input+=rules.run_sintax.input
-    for tool in config["tools"]:
-        for ref in config[tool]["ref"]:
-            for query in config[tool]["query"]:
-                input.append(f"results/{tool}/{ref}/queries/{query}/config.yml")
-                input.append(f"results/{tool}/{ref}/queries/{query}/software.txt")
     return input
 
 rule all:
     input:
-        all_input
+        all_input,
+        epa_ng_input
 
 rule write_config:
     output:
