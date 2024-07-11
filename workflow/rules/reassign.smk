@@ -9,13 +9,13 @@ rule update_taxonomy:
         "results/reassign/{ref}/queries/{query}/reassign/{phyloref}/{heur}/taxonomy.tsv"
     input:
         base=rules.parse_sintax.output[0],
-        update=update_taxonomy_input,
+        updated=update_taxonomy_input,
     params:
         agree_rank = lambda wildcards: config["phylogeny"]["ref"][wildcards.phyloref]["reassign_sintax"]["rank"],
         update_ranks = lambda wildcards: config["phylogeny"]["ref"][wildcards.phyloref]["reassign_sintax"]["update_ranks"],
         downstream_ranks = lambda wildcards: config["phylogeny"]["ref"][wildcards.phyloref]["reassign_sintax"]["downstream_ranks"],
     shell:
         """
-        python workflow/scripts/update_taxonomy.py -b {input.base} -u {input.update} \
+        python workflow/scripts/update_taxonomy.py -b {input.base} -u {input.updated} \
             -a {params.agree_rank} -U {params.update_ranks} -d {params.downstream_ranks} -o {output}
         """
