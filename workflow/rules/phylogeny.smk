@@ -142,7 +142,7 @@ rule hmm_align:
         "results/phylogeny/{ref}/hmmalign/{query}/splits/{ref}.{query}.{split}.fasta",
     input:
         hmm=rules.hmm_build.output,
-        qry="results/phylogeny/{ref}/queries/{query}/splits/{split}.fasta"
+        qry="results/phylogeny/{ref}/queries/{query}/splits/{split}.fasta",
         ref_msa=ref_msa
     log:
         "logs/phylogeny/{ref}/hmmalign.{query}.{split}.log",
