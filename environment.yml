@@ -15,5 +15,6 @@ dependencies:
   - tqdm
   - pip
   - seqkit
+  - ete3
   - pip:
     - snakemake-executor-plugin-slurm==0.3.0

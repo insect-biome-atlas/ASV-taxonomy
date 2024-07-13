@@ -114,20 +114,43 @@ rule hmm_build:
         hmmbuild {output} {input} > {log} 2>&1
         """
 
+splits=[f'split{x:03d}' for x in list(range(1,1001))]
+
+rule split_epang_input:
+    """
+    Splits the sintax fasta file into 1000 chunks
+    """
+    output:
+        temp(expand("results/phylogeny/{{ref}}/queries/{{query}}/splits/{split}.fasta", split=splits))
+    input:
+        qry=lambda wildcards: config["phylogeny"]["query"][wildcards.query],
+    log:
+        "logs/phylogeny/{ref}.{query}.split.log"
+    params:
+        outdir=lambda wildcards, output: os.path.dirname(output[0]),
+        splits=len(splits),
+    resources:
+        runtime = 60,
+    threads: 2
+    shell:
+        """
+        cat {input.qry} | seqkit split2 -O {params.outdir} -j {threads} -p {params.splits} --by-part-prefix split >{log} 2>&1
+        """
+
 rule hmm_align:
     output:
-        "results/phylogeny/{ref}/hmmalign/{query}/{ref}.{query}.fasta",
+        "results/phylogeny/{ref}/hmmalign/{query}/splits/{ref}.{query}.{split}.fasta",
     input:
         hmm=rules.hmm_build.output,
-        qry=lambda wildcards: config["phylogeny"]["query"][wildcards.query],
+        qry="results/phylogeny/{ref}/queries/{query}/splits/{split}.fasta",
         ref_msa=ref_msa
     log:
-        "logs/phylogeny/{ref}/hmmalign.{query}.log",
+        "logs/phylogeny/{ref}/hmmalign.{query}.{split}.log",
     resources:
         runtime=60*24,
         mem_mb=mem_allowed,
     params:
-        tmpdir=lambda wildcards: f"$TMPDIR/{wildcards.ref}.{wildcards.query}.raxml-ng",
+        tmpdir=lambda wildcards: f"$TMPDIR/{wildcards.ref}.{wildcards.query}.{wildcards.split}.hmm_align",
     envmodules:
         "bioinfo-tools",
         "hmmer/3.3.2"
@@ -142,13 +165,13 @@ rule hmm_align:
 
 rule split_aln:
     output:
-        ref_msa="results/phylogeny/{ref}/hmmalign/{query}/reference.fasta",
-        qry_msa="results/phylogeny/{ref}/hmmalign/{query}/query.fasta",
+        ref_msa="results/phylogeny/{ref}/hmmalign/{query}/splits/{split}.reference.fasta",
+        qry_msa="results/phylogeny/{ref}/hmmalign/{query}/splits/{split}.query.fasta",
     input:
         ref_msa=ref_msa,
         msa=rules.hmm_align.output,
     log:
-        "logs/phylogeny/{ref}/split_aln.{query}.log",
+        "logs/phylogeny/{ref}/split_aln.{query}.{split}.log",
     params:
         outdir=lambda wildcards, output: os.path.dirname(output.ref_msa),
     envmodules:
@@ -161,12 +184,12 @@ rule split_aln:
 
 rule raxml_evaluate:
     output:
-        "results/phylogeny/{ref}/raxml-ng/{query}/info.raxml.bestModel",
+        "results/phylogeny/{ref}/raxml-ng/{query}/splits/{split}.info.raxml.bestModel",
     input:
         tree=ref_tree,
         msa=rules.split_aln.output.ref_msa,
     log:
-        "logs/phylogeny/{ref}/raxml-ng.{query}.log",
+        "logs/phylogeny/{ref}/raxml-ng.{query}.{split}.log",
     params:
         model=lambda wildcards: config["phylogeny"]["ref"][wildcards.ref]["model"],
         prefix=lambda wildcards, output: os.path.dirname(output[0]) + "/info",
@@ -194,14 +217,14 @@ def get_heuristic(wildcards):
 
 rule epa_ng:
     output:
-        "results/epa-ng/{ref}/queries/{query}/{heur}/epa-ng_result.jplace",
+        "results/epa-ng/{ref}/queries/{query}/splits/{heur}/epa-ng_result.{split}.jplace",
     input:
         qry=rules.split_aln.output.qry_msa,
         ref_msa=rules.split_aln.output.ref_msa,
         ref_tree=ref_tree,
         info=rules.raxml_evaluate.output[0],
     log:
-        "logs/epa-ng/{ref}/queries/{query}/{heur}/epa-ng.log",
+        "logs/epa-ng/{ref}/queries/{query}/splits/{heur}/epa-ng.{split}.log",
     params:
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
         heur=get_heuristic,
@@ -239,14 +262,14 @@ rule gappa_assign:
     Run gappa taxonomic assignment on placement file
     """
     output:
-        "results/epa-ng/{ref}/queries/{query}/{heur}/per_query.tsv",
-        "results/epa-ng/{ref}/queries/{query}/{heur}/profile.tsv",
-        "results/epa-ng/{ref}/queries/{query}/{heur}/labelled_tree.newick",
+        "results/epa-ng/{ref}/queries/{query}/splits/{heur}/per_query.{split}.tsv",
+        "results/epa-ng/{ref}/queries/{query}/splits/{heur}/profile.{split}.tsv",
+        "results/epa-ng/{ref}/queries/{query}/splits/{heur}/labelled_tree.{split}.newick",
     input:
-        jplace="results/epa-ng/{ref}/queries/{query}/{heur}/epa-ng_result.jplace",
+        jplace=rules.epa_ng.output,
         taxonfile=ref_taxonomy,
     log:
-        "logs/epa-ng/{ref}/queries/{query}/{heur}/gappa_assign.log",
+        "logs/epa-ng/{ref}/queries/{query}/splits/{heur}/gappa_assign.{split}.log",
     params:
         ranks_string=lambda wildcards: "|".join(config["phylogeny"]["ref"][wildcards.ref]["tree_ranks"]),
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
@@ -273,14 +296,29 @@ rule gappa2taxdf:
     Convert gappa output to a taxonomic dataframe
     """
     output:
-        "results/epa-ng/{ref}/queries/{query}/{heur}/taxonomy.tsv",
+        "results/epa-ng/{ref}/queries/{query}/splits/{heur}/taxonomy.{split}.tsv",
     input:
         rules.gappa_assign.output[0],
     log:
-        "logs/epa-ng/{ref}/queries/{query}/{heur}/gappa2taxdf.log"
+        "logs/epa-ng/{ref}/queries/{query}/splits/{heur}/gappa2taxdf.{split}.log"
     params:
         ranks=lambda wildcards: config["phylogeny"]["ref"][wildcards.ref]["tree_ranks"],
     shell:
         """
         python workflow/scripts/gappa2taxdf.py {input} {output} --ranks {params.ranks} >{log} 2>&1
         """
+
+rule collate_gappa_taxdf:
+    output:
+        "results/epa-ng/{ref}/queries/{query}/{heur}/taxonomy.tsv"
+    input:
+        expand("results/epa-ng/{{ref}}/queries/{{query}}/splits/{{heur}}/taxonomy.{split}.tsv", split=splits)
+    run:
+        with open(output[0], "w") as out:
+            for i, f in enumerate(input):
+                with open(f, 'r') as infile:
+                    for j, line in enumerate(infile):
+                        if j == 0 and i == 0:
+                            out.write(line)
+                        elif j > 0:
+                            out.write(line)

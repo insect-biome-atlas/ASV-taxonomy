@@ -11,8 +11,15 @@ executor: slurm
 rerun-incomplete: True
 
 default-resources: 
-  slurm_account: "<your-slurm-account"
+  slurm_account: "<your-slurm-account>"
+  #slurm_partition: "core"
 
-#set-resources:
-#  epa_ng:
-#    contstraint: "mem256GB"
+set-resources:
+  epa_ng:
+    runtime: 10080
+  qiime2_classify_vsearch:
+    runtime: 10080
+    #slurm_partition: "node"
+
+set-threads:
+  qiime2_classify_vsearch: 20

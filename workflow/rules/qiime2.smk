@@ -5,6 +5,16 @@ localrules:
     qiime2_import_taxonomy,
     qiime2_export
 
+rule run_qiime2_vsearch:
+    input:
+        expand("results/qiime2/{ref}/queries/{query}/taxonomy_vsearch.tsv",
+            ref=config["qiime2"]["ref"].keys(), query=config["qiime2"]["query"].keys())
+
+rule run_qiime2_sklearn:
+    input:
+        expand("results/qiime2/{ref}/queries/{query}/taxonomy_sklearn.tsv",
+            ref=config["qiime2"]["ref"].keys(), query=config["qiime2"]["query"].keys())
+
 rule sintax2qiime_input:
     """
     Output should look like this:
@@ -43,6 +53,30 @@ def qiime2_ref_seqs(wildcards):
     else:
         return config["qiime2"]["ref"][wildcards.ref]["fasta"]
 
+
+splits=[f'split{x:03d}' for x in list(range(1,1001))]
+
+rule split_qiime_input:
+    """
+    Splits the QIIME fasta file into 1000 chunks
+    """
+    output:
+        temp(expand("results/qiime2/{{ref}}/queries/{{query}}/splits/{split}.fasta", split=splits))
+    input:
+        qry=lambda wildcards: config["qiime2"]["query"][wildcards.query],
+    log:
+        "logs/qiime2/qiime2.{ref}.{query}.split.log"
+    params:
+        outdir=lambda wildcards, output: os.path.dirname(output[0]),
+        splits=len(splits),
+    resources:
+        runtime = 60,
+    threads: 2
+    shell:
+        """
+        cat {input.qry} | seqkit split2 -O {params.outdir} -j {threads} -p {params.splits} --by-part-prefix split >{log} 2>&1
+        """
+
 rule qiime2_import_ref_seqs:
     output:
         "results/qiime2/{ref}/seqs.qza"
@@ -63,11 +97,11 @@ rule qiime2_import_ref_seqs:
         
 rule qiime2_import_qry_seqs:
     output:
-        "results/qiime2/{ref}/queries/{query}/seqs.qza"
+        "results/qiime2/{ref}/queries/{query}/splits/{split}.qza"
     input:
-        lambda wildcards: config["qiime2"]["query"][wildcards.query],
+        "results/qiime2/{ref}/queries/{query}/splits/{split}.fasta"
     log:
-        "results/qiime2/{ref}/queries/{query}/qiime2_import_seqs.log"
+        "logs/qiime2/{ref}/queries/{query}/qiime2_import_seqs.{split}.log"
     container:
         "docker://quay.io/qiime2/core:2023.9" # may have to be built as part of a SLURM job on Uppmax
     threads: 1
@@ -126,12 +160,12 @@ rule qiime2_train:
 
 rule qiime2_classify_sklearn:
     output:
-        "results/qiime2/{ref}/queries/{query}/taxonomy_sklearn.qza"
+        "results/qiime2/{ref}/queries/{query}/splits/taxonomy_sklearn.{split}.qza"
     input:
         classifier="results/qiime2/{ref}/classifier.qza",
-        qry="results/qiime2/{ref}/queries/{query}/seqs.qza"
+        qry=rules.qiime2_import_qry_seqs.output[0]
     log:
-        "results/qiime2/{ref}/queries/{query}/qiime2_classify_sklearn.log"
+        "logs/qiime2/{ref}/queries/{query}/qiime2_classify_sklearn.{split}.log"
     threads: 20
     container:
         "docker://quay.io/qiime2/core:2023.9" # may have to be built as part of a SLURM job on Uppmax
@@ -145,14 +179,14 @@ rule qiime2_classify_sklearn:
 
 rule qiime2_classify_vsearch:
     output:
-        vsearch="results/qiime2/{ref}/queries/{query}/taxonomy_vsearch.qza",
-        hits="results/qiime2/{ref}/queries/{query}/taxonomy_hits.qza",
+        vsearch="results/qiime2/{ref}/queries/{query}/splits/taxonomy_vsearch.{split}.qza",
+        hits="results/qiime2/{ref}/queries/{query}/splits/taxonomy_hits.{split}.qza",
     input:
         ref="results/qiime2/{ref}/seqs.qza",
         ref_tax="results/qiime2/{ref}/taxonomy.qza",
-        qry="results/qiime2/{ref}/queries/{query}/seqs.qza",
+        qry=rules.qiime2_import_qry_seqs.output[0]
     log:
-        "results/qiime2/{ref}/queries/{query}/qiime2_classify_vsearch.log"
+        "logs/qiime2/{ref}/queries/{query}/qiime2_classify_vsearch.{split}.log"
     threads: 20
     container:
         "docker://quay.io/qiime2/core:2023.9" # may have to be built as part of a SLURM job on Uppmax
@@ -167,11 +201,11 @@ rule qiime2_classify_vsearch:
 
 rule qiime2_export:
     output:
-        "results/qiime2/{ref}/queries/{query}/taxonomy_{classifier}.tsv"
+        "results/qiime2/{ref}/queries/{query}/splits/taxonomy_{classifier}.{split}.tsv"
     input:
-        "results/qiime2/{ref}/queries/{query}/taxonomy_{classifier}.qza"
+        "results/qiime2/{ref}/queries/{query}/splits/taxonomy_{classifier}.{split}.qza"
     log:
-        "results/qiime2/{ref}/queries/{query}/qiime2_export_{classifier}.log"
+        "logs/qiime2/{ref}/queries/{query}/qiime2_export_{classifier}.{split}.log"
     container: 
         "docker://quay.io/qiime2/core:2023.9" # may have to be built as part of a SLURM job on Uppmax
     threads: 1
@@ -179,3 +213,21 @@ rule qiime2_export:
         """
         qiime tools export --input-path {input} --output-path {output[0]} --output-format TSVTaxonomyFormat > {log} 2>&1
         """
+
+rule collate_qiime:
+    """
+    Concatenates the qiime output files into a single file
+    """
+    output:
+        "results/qiime2/{ref}/queries/{query}/taxonomy_{classifier}.tsv"
+    input:
+        expand("results/qiime2/{{ref}}/queries/{{query}}/splits/taxonomy_{{classifier}}.{split}.tsv", split=splits),
+    run:
+        with open(output[0], "w") as out:
+            for i, f in enumerate(input):
+                with open(f, 'r') as infile:
+                    for j, line in enumerate(infile):
+                        if j == 0 and i == 0:
+                            out.write(line)
+                        elif j > 0:
+                            out.write(line)

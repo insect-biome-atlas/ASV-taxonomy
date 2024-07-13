@@ -1,0 +1,7 @@
+name: gappa
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - gappa=0.8.4
