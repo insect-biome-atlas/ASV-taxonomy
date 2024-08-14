@@ -2,34 +2,34 @@ localrules:
     parse_sintax,
     run_sintax,
     collate_sintax,
-    extract_ASVs
+    extract_ASVs,
+    split_sintax_input
 
 rule run_sintax:
     input: 
         expand("results/sintax/{ref}/queries/{query}/sintax.tsv",
             ref=config["sintax"]["ref"].keys(), query=config["sintax"]["query"].keys())
 
-splits=[f'split{x:03d}' for x in list(range(1,1001))]
-
-rule split_sintax_input:
+checkpoint split_sintax_input:
     """
     Splits the sintax fasta file into 1000 chunks
     """
     output:
-        temp(expand("results/sintax/{{ref}}/queries/{{query}}/splits/{split}.fasta", split=splits))
+        directory("results/sintax/{ref}/queries/{query}/splits")
     input:
         qry=lambda wildcards: config["sintax"]["query"][wildcards.query]
     log:
         "logs/sintax/sintax.{ref}.{query}.split.log"
     params:
-        outdir=lambda wildcards, output: os.path.dirname(output[0]),
-        splits=len(splits),
+        outdir=lambda wildcards, output: output[0],
+        #splits=len(splits),
+        size=500,
     resources:
         runtime = 60,
-    threads: 2
+    threads: 1
     shell:
         """
-        cat {input.qry} | seqkit split2 -O {params.outdir} -j {threads} -p {params.splits} --by-part-prefix split >{log} 2>&1
+        cat {input.qry} | seqkit split2 -O {params.outdir} -j {threads} -s {params.size} >{log} 2>&1
         """
 
 rule sintax:
@@ -40,7 +40,7 @@ rule sintax:
         temp("results/sintax/{ref}/queries/{query}/splits/{split}.tab")
     input:
         db=lambda wildcards: config["sintax"]["ref"][wildcards.ref]["fasta"],
-        qry="results/sintax/{ref}/queries/{query}/splits/{split}.fasta"
+        qry="results/sintax/{ref}/queries/{query}/splits/stdin.part_{split}.fasta"
     log:
         "logs/sintax/splits/sintax.{ref}.{query}.{split}.log"
     params:
@@ -56,6 +56,12 @@ rule sintax:
         vsearch --sintax {input.qry} --sintax_cutoff {params.cutoff} --randseed {params.seed} --db {input.db} --tabbedout {output} --threads 1 >{log} 2>&1
         """
 
+def aggregate_sintax(wildcards):
+    checkpoint_output = checkpoints.split_sintax_input.get(**wildcards).output[0]
+    return expand("results/sintax/{ref}/queries/{query}/splits/{split}.tab",
+                    ref=wildcards.ref, query=wildcards.query, 
+                    split=glob_wildcards(os.path.join(checkpoint_output, "stdin.part_{split}.fasta")).split)
+
 rule collate_sintax:
     """
     Concatenates the sintax output files into a single file
@@ -63,7 +69,7 @@ rule collate_sintax:
     output:
         "results/sintax/{ref}/queries/{query}/sintax.tab"
     input:
-        expand("results/sintax/{{ref}}/queries/{{query}}/splits/{split}.tab", split=splits),
+        aggregate_sintax,
     shell:
         """
         cat {input} > {output}
