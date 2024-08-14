@@ -3,7 +3,11 @@ localrules:
     qiime2_import_qry_seqs,
     qiime2_import_ref_seqs,
     qiime2_import_taxonomy,
-    qiime2_export
+    qiime2_export,
+    split_qiime_input
+
+wildcard_constraints:
+    classifier = "vsearch|sklearn",
 
 rule run_qiime2_vsearch:
     input:
@@ -56,25 +60,25 @@ def qiime2_ref_seqs(wildcards):
 
 splits=[f'split{x:03d}' for x in list(range(1,1001))]
 
-rule split_qiime_input:
+checkpoint split_qiime_input:
     """
-    Splits the QIIME fasta file into 1000 chunks
+    Splits the QIIME fasta file into fixed size chunks
     """
     output:
-        temp(expand("results/qiime2/{{ref}}/queries/{{query}}/splits/{split}.fasta", split=splits))
+        directory("results/qiime2/{ref}/queries/{query}/splits")
     input:
         qry=lambda wildcards: config["qiime2"]["query"][wildcards.query],
     log:
         "logs/qiime2/qiime2.{ref}.{query}.split.log"
     params:
-        outdir=lambda wildcards, output: os.path.dirname(output[0]),
-        splits=len(splits),
+        outdir=lambda wildcards, output: output[0],
+        size=500
     resources:
         runtime = 60,
-    threads: 2
+    threads: 1
     shell:
         """
-        cat {input.qry} | seqkit split2 -O {params.outdir} -j {threads} -p {params.splits} --by-part-prefix split >{log} 2>&1
+        cat {input.qry} | seqkit split2 -O {params.outdir} -j {threads} -s {params.size} >{log} 2>&1
         """
 
 rule qiime2_import_ref_seqs:
@@ -97,9 +101,9 @@ rule qiime2_import_ref_seqs:
         
 rule qiime2_import_qry_seqs:
     output:
-        "results/qiime2/{ref}/queries/{query}/splits/{split}.qza"
+        "results/qiime2/{ref}/queries/{query}/splits/{split}/{split}.qza"
     input:
-        "results/qiime2/{ref}/queries/{query}/splits/{split}.fasta"
+        "results/qiime2/{ref}/queries/{query}/splits/stdin.part_{split}.fasta"
     log:
         "logs/qiime2/{ref}/queries/{query}/qiime2_import_seqs.{split}.log"
     container:
@@ -160,7 +164,7 @@ rule qiime2_train:
 
 rule qiime2_classify_sklearn:
     output:
-        "results/qiime2/{ref}/queries/{query}/splits/taxonomy_sklearn.{split}.qza"
+        "results/qiime2/{ref}/queries/{query}/splits/{split}/taxonomy_sklearn.qza"
     input:
         classifier="results/qiime2/{ref}/classifier.qza",
         qry=rules.qiime2_import_qry_seqs.output[0]
@@ -179,8 +183,8 @@ rule qiime2_classify_sklearn:
 
 rule qiime2_classify_vsearch:
     output:
-        vsearch="results/qiime2/{ref}/queries/{query}/splits/taxonomy_vsearch.{split}.qza",
-        hits="results/qiime2/{ref}/queries/{query}/splits/taxonomy_hits.{split}.qza",
+        vsearch="results/qiime2/{ref}/queries/{query}/splits/{split}/taxonomy_vsearch.qza",
+        hits="results/qiime2/{ref}/queries/{query}/splits/{split}/taxonomy_hits.qza",
     input:
         ref="results/qiime2/{ref}/seqs.qza",
         ref_tax="results/qiime2/{ref}/taxonomy.qza",
@@ -196,14 +200,15 @@ rule qiime2_classify_vsearch:
     shell:
         """
         qiime feature-classifier classify-consensus-vsearch --i-reference-reads {input.ref} --i-query {input.qry} \
-            --i-reference-taxonomy {input.ref_tax} --o-classification {output.vsearch} --o-search-results {output.hits} --p-threads {threads} > {log} 2>&1
+            --i-reference-taxonomy {input.ref_tax} --o-classification {output.vsearch} --o-search-results {output.hits} \
+            --p-threads {threads} --verbose > {log} 2>&1
         """
 
 rule qiime2_export:
     output:
-        "results/qiime2/{ref}/queries/{query}/splits/taxonomy_{classifier}.{split}.tsv"
+        "results/qiime2/{ref}/queries/{query}/splits/{split}/taxonomy_{classifier}.tsv"
     input:
-        "results/qiime2/{ref}/queries/{query}/splits/taxonomy_{classifier}.{split}.qza"
+        "results/qiime2/{ref}/queries/{query}/splits/{split}/taxonomy_{classifier}.qza"
     log:
         "logs/qiime2/{ref}/queries/{query}/qiime2_export_{classifier}.{split}.log"
     container: 
@@ -214,6 +219,12 @@ rule qiime2_export:
         qiime tools export --input-path {input} --output-path {output[0]} --output-format TSVTaxonomyFormat > {log} 2>&1
         """
 
+def aggregate_qiime(wildcards):
+    checkpoint_output = checkpoints.split_qiime_input.get(**wildcards).output[0]
+    return expand("results/qiime2/{ref}/queries/{query}/splits/{split}/taxonomy_{classifier}.tsv",
+                    ref=wildcards.ref, query=wildcards.query, classifier=wildcards.classifier, 
+                    split=glob_wildcards(os.path.join(checkpoint_output, "stdin.part_{split}.fasta")).split)
+
 rule collate_qiime:
     """
     Concatenates the qiime output files into a single file
@@ -221,7 +232,7 @@ rule collate_qiime:
     output:
         "results/qiime2/{ref}/queries/{query}/taxonomy_{classifier}.tsv"
     input:
-        expand("results/qiime2/{{ref}}/queries/{{query}}/splits/taxonomy_{{classifier}}.{split}.tsv", split=splits),
+        aggregate_qiime,
     run:
         with open(output[0], "w") as out:
             for i, f in enumerate(input):
@@ -231,3 +242,16 @@ rule collate_qiime:
                             out.write(line)
                         elif j > 0:
                             out.write(line)
+
+rule parse_qiime:
+    output:
+        "results/qiime2/{ref}/queries/{query}/taxonomy_{classifier}_parsed.tsv"
+    input:
+        rules.collate_qiime.output[0]
+    run:
+        import pandas as pd
+        from workflow.scripts.evaluate_classifier import parse_qiime2
+        df = pd.read_csv(input[0], sep="\t", index_col=0)
+        parsed = parse_qiime2(df)
+        parsed.to_csv(output[0], sep="\t")
+    
