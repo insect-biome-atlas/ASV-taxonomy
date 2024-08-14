@@ -2,8 +2,10 @@ localrules:
     nexus2newick,
     extract_ref_taxonomy,
     nexus2fasta,
+    split_epang_input,
     split_aln,
     gappa2taxdf,
+    collate_gappa_taxdf,
     write_config,
     write_software,
 
@@ -114,40 +116,38 @@ rule hmm_build:
         hmmbuild {output} {input} > {log} 2>&1
         """
 
-splits=[f'split{x:03d}' for x in list(range(1,1001))]
-
-rule split_epang_input:
+checkpoint split_epang_input:
     """
-    Splits the sintax fasta file into 1000 chunks
+    Splits the sintax fasta file into chunks with fixed size
     """
     output:
-        temp(expand("results/phylogeny/{{ref}}/queries/{{query}}/splits/{split}.fasta", split=splits))
+        directory("results/phylogeny/{ref}/queries/{query}/splits")
     input:
         qry=lambda wildcards: config["phylogeny"]["query"][wildcards.query],
     log:
         "logs/phylogeny/{ref}.{query}.split.log"
     params:
-        outdir=lambda wildcards, output: os.path.dirname(output[0]),
-        splits=len(splits),
+        outdir=lambda wildcards, output: output[0],
+        size=500
     resources:
         runtime = 60,
-    threads: 2
+    threads: 1
     shell:
         """
-        cat {input.qry} | seqkit split2 -O {params.outdir} -j {threads} -p {params.splits} --by-part-prefix split >{log} 2>&1
+        cat {input.qry} | seqkit split2 -O {params.outdir} -j {threads} -s {params.size} --by-part-prefix split >{log} 2>&1
         """
 
 rule hmm_align:
     output:
-        "results/phylogeny/{ref}/hmmalign/{query}/splits/{ref}.{query}.{split}.fasta",
+        temp("results/phylogeny/{ref}/hmmalign/{query}/splits/{split}/{split}.fasta"),
     input:
         hmm=rules.hmm_build.output,
-        qry="results/phylogeny/{ref}/queries/{query}/splits/{split}.fasta",
+        qry="results/phylogeny/{ref}/queries/{query}/splits/stdin.part_{split}.fasta",
         ref_msa=ref_msa
     log:
         "logs/phylogeny/{ref}/hmmalign.{query}.{split}.log",
     resources:
-        runtime=60*24,
+        runtime=60,
         mem_mb=mem_allowed,
     params:
         tmpdir=lambda wildcards: f"$TMPDIR/{wildcards.ref}.{wildcards.query}.{wildcards.split}.hmm_align",
@@ -165,8 +165,8 @@ rule hmm_align:
 
 rule split_aln:
     output:
-        ref_msa="results/phylogeny/{ref}/hmmalign/{query}/splits/{split}.reference.fasta",
-        qry_msa="results/phylogeny/{ref}/hmmalign/{query}/splits/{split}.query.fasta",
+        ref_msa=temp("results/phylogeny/{ref}/hmmalign/{query}/splits/{split}/reference.fasta"),
+        qry_msa=temp("results/phylogeny/{ref}/hmmalign/{query}/splits/{split}/query.fasta"),
     input:
         ref_msa=ref_msa,
         msa=rules.hmm_align.output,
@@ -174,17 +174,15 @@ rule split_aln:
         "logs/phylogeny/{ref}/split_aln.{query}.{split}.log",
     params:
         outdir=lambda wildcards, output: os.path.dirname(output.ref_msa),
-    envmodules:
-        "bioinfo-tools",
-        "EPA-ng/0.3.8"
+    conda: "../envs/epang.yml"
     shell:
         """
-        epa-ng --redo --out-dir {params.outdir} --split {input.ref_msa} {input.msa} > {log} 2>&1
+        epa-ng --redo --split {input.ref_msa} {input.msa} --outdir {params.outdir} > {log} 2>&1
         """
 
 rule raxml_evaluate:
     output:
-        "results/phylogeny/{ref}/raxml-ng/{query}/splits/{split}.info.raxml.bestModel",
+        temp("results/phylogeny/{ref}/raxml-ng/{query}/splits/{split}/info.raxml.bestModel"),
     input:
         tree=ref_tree,
         msa=rules.split_aln.output.ref_msa,
@@ -217,20 +215,18 @@ def get_heuristic(wildcards):
 
 rule epa_ng:
     output:
-        "results/epa-ng/{ref}/queries/{query}/splits/{heur}/epa-ng_result.{split}.jplace",
+        temp("results/epa-ng/{ref}/queries/{query}/splits/{split}/{heur}/epa-ng_result.jplace"),
     input:
         qry=rules.split_aln.output.qry_msa,
         ref_msa=rules.split_aln.output.ref_msa,
         ref_tree=ref_tree,
         info=rules.raxml_evaluate.output[0],
     log:
-        "logs/epa-ng/{ref}/queries/{query}/splits/{heur}/epa-ng.{split}.log",
+        "logs/epa-ng/{ref}/queries/{query}/splits/{split}/{heur}/epa-ng.log",
     params:
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
         heur=get_heuristic,
-    envmodules:
-        "bioinfo-tools",
-        "EPA-ng/0.3.8"
+    conda: "../envs/epang.yml"
     threads: 20
     resources:
         runtime=60*24,
@@ -262,14 +258,14 @@ rule gappa_assign:
     Run gappa taxonomic assignment on placement file
     """
     output:
-        "results/epa-ng/{ref}/queries/{query}/splits/{heur}/per_query.{split}.tsv",
-        "results/epa-ng/{ref}/queries/{query}/splits/{heur}/profile.{split}.tsv",
-        "results/epa-ng/{ref}/queries/{query}/splits/{heur}/labelled_tree.{split}.newick",
+        temp("results/epa-ng/{ref}/queries/{query}/splits/{split}/{heur}/per_query.tsv"),
+        temp("results/epa-ng/{ref}/queries/{query}/splits/{split}/{heur}/profile.tsv"),
+        temp("results/epa-ng/{ref}/queries/{query}/splits/{split}/{heur}/labelled_tree.newick"),
     input:
         jplace=rules.epa_ng.output,
         taxonfile=ref_taxonomy,
     log:
-        "logs/epa-ng/{ref}/queries/{query}/splits/{heur}/gappa_assign.{split}.log",
+        "logs/epa-ng/{ref}/queries/{query}/splits/{split}/{heur}/gappa_assign.log",
     params:
         ranks_string=lambda wildcards: "|".join(config["phylogeny"]["ref"][wildcards.ref]["tree_ranks"]),
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
@@ -279,7 +275,7 @@ rule gappa_assign:
         "../envs/gappa.yml"
     threads: 20
     resources:
-        runtime=60 *2,
+        runtime=30,
         mem_mb=mem_allowed,
     shell:
         """
@@ -296,7 +292,7 @@ rule gappa2taxdf:
     Convert gappa output to a taxonomic dataframe
     """
     output:
-        "results/epa-ng/{ref}/queries/{query}/splits/{heur}/taxonomy.{split}.tsv",
+        temp("results/epa-ng/{ref}/queries/{query}/splits/{split}/{heur}/taxonomy.tsv"),
     input:
         rules.gappa_assign.output[0],
     log:
@@ -308,11 +304,18 @@ rule gappa2taxdf:
         python workflow/scripts/gappa2taxdf.py {input} {output} --ranks {params.ranks} >{log} 2>&1
         """
 
+def aggregate_gappa(wildcards):
+    checkpoint_output = checkpoints.split_epang_input.get(**wildcards).output[0]
+    return expand("results/epa-ng/{ref}/queries/{query}/splits/{split}/{heur}/taxonomy.tsv",
+                    ref=wildcards.ref, query=wildcards.query, heur=wildcards.heur, 
+                    split=glob_wildcards(os.path.join(checkpoint_output, "stdin.part_{split}.fasta")).split)
+
+
 rule collate_gappa_taxdf:
     output:
         "results/epa-ng/{ref}/queries/{query}/{heur}/taxonomy.tsv"
     input:
-        expand("results/epa-ng/{{ref}}/queries/{{query}}/splits/{{heur}}/taxonomy.{split}.tsv", split=splits)
+        aggregate_gappa
     run:
         with open(output[0], "w") as out:
             for i, f in enumerate(input):
