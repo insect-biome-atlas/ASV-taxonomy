@@ -1,5 +1,8 @@
 import os
 
+wildcard_constraints:
+    split="\d+",
+    query="[a-zA-Z0-9_.]+"
 
 def mem_allowed(wildcards, threads):
     return max(threads * 6400, 6400)
